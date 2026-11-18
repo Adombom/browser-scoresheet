@@ -26,21 +26,21 @@
 :root[data-theme="dark"] {
   color-scheme: dark;
   --loss-highlight: #e7b8b3;
-  --paper: #1e2522;
-  --background: #121715;
-  --ink: #edf2eb;
-  --muted: #b7c3b8;
-  --green: #aad8b9;
-  --line: #59665d;
-  --soft: #2c3730;
-  --field: #252e28;
-  --focus: #a6dfbc;
-  --primary: #356047;
-  --primary-hover: #407553;
-  --grid-border: #829485;
-  --active-cell: #344c3c;
-  --active-border: #95c69a;
-  --excluded: #292d2a;
-  --stat-background: #263129;
+  --paper: #21252a;
+  --background: #16191d;
+  --ink: #f0f2f5;
+  --muted: #c2c9d0;
+  --green: #c1cedc;
+  --line: #77808b;
+  --soft: #2d333a;
+  --field: #282e35;
+  --focus: #aec0d3;
+  --primary: #455465;
+  --primary-hover: #505f71;
+  --grid-border: #8d98a6;
+  --active-cell: #394351;
+  --active-border: #a1b1c2;
+  --excluded: #2a2e33;
+  --stat-background: #2b3138;
   --error: #ffb0a8;
 }
