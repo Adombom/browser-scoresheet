@@ -1,0 +1,126 @@
+{
+  "teams": [
+    {
+      "name": "4 Darts",
+      "players": [
+        "Gord Mulcahey",
+        "J.P. Reaume",
+        "Keith Rutledge",
+        "Manny Rola",
+        "Stu Mossington"
+      ]
+    },
+    {
+      "name": "AGW Solutions",
+      "players": [
+        "Brian Doucette",
+        "Dan Danvers",
+        "Gord Banks",
+        "Wes White"
+      ]
+    },
+    {
+      "name": "Blue Sky Plumbing",
+      "players": [
+        "Gilles Daoust",
+        "Glen Cameron",
+        "Paul Raymond",
+        "Pierre Bourdon",
+        "Robin Hill"
+      ]
+    },
+    {
+      "name": "KC Mobile Tires",
+      "players": [
+        "Claude Deschene",
+        "John Stewart",
+        "Leigh Ridenour",
+        "Tom Anderson",
+        "Tom Lamarre"
+      ]
+    },
+    {
+      "name": "Larry's Rangers",
+      "players": [
+        "Jeff Francom",
+        "Mike Pettigrew",
+        "Robert Blair",
+        "Wally Fitzgerald"
+      ]
+    },
+    {
+      "name": "Schutz Landscaping",
+      "players": [
+        "Andy Couroux",
+        "Bill Hiscock",
+        "Ralph Schutz",
+        "Ryan Pouder",
+        "Trent Couroux"
+      ]
+    },
+    {
+      "name": "Scottie's Highlanders",
+      "players": [
+        "Al Waltenbury",
+        "Bob Sneddon",
+        "Josh McCully",
+        "Marshall McCully",
+        "Mike Wellard",
+        "Rich Gribbon",
+        "Rob Korn"
+      ]
+    },
+    {
+      "name": "Sharkey's Plumbing and Heating",
+      "players": [
+        "Al Atkins",
+        "Dean Schiavo",
+        "John Pangos",
+        "Kevin Robinson",
+        "Mark Sharkey"
+      ]
+    },
+    {
+      "name": "Squeeze the Bay",
+      "players": [
+        "Dale Norman",
+        "Joe Murphy",
+        "Ken Hunter",
+        "Len Belanger",
+        "Pat Lynch",
+        "Phil Lynch"
+      ]
+    },
+    {
+      "name": "Sully's Auto Spa",
+      "players": [
+        "Adam Foren",
+        "Bernie Walzak",
+        "Chris Foren",
+        "J.R. Davis",
+        "Jerry Jacques"
+      ]
+    },
+    {
+      "name": "The Pool and Spa Centre",
+      "players": [
+        "Billy McLeod",
+        "Jason Hart",
+        "Mark Neethling",
+        "Mike Menard",
+        "Warner Csuzdi"
+      ]
+    },
+    {
+      "name": "Toy Doctor",
+      "players": [
+        "Ab Depencier",
+        "Cory Little",
+        "Eddie Blanchfield",
+        "Jason Sale",
+        "Mario Venable",
+        "Mark Jasmin"
+      ]
+    }
+  ]
+}

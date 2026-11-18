@@ -1,0 +1,1464 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nightly Scoresheet · Gateway Men’s Dart League</title>
+  <script>
+    try {
+      if (localStorage.getItem("gmdl-night-mode") === "true") {
+        document.documentElement.dataset.theme = "dark";
+      }
+    } catch {
+      // The toggle works for this session when browser storage is unavailable.
+    }
+  </script>
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #fffdf7;
+      --background: #eae7db;
+      --ink: #23291f;
+      --muted: #444c3d;
+      --green: #214734;
+      --line: #89917f;
+      --soft: #eeeee3;
+      --highlighter: #a6ff00;
+      --larry-highlight: #ffff00;
+      --loss-highlight: #ef8078;
+      --field: #fffefa;
+      --focus: #23674b;
+      --primary: #214734;
+      --primary-hover: #2a5841;
+      --grid-border: #858979;
+      --active-cell: #e4f1df;
+      --active-border: #61855c;
+      --excluded: #efeee8;
+      --stat-background: #f6f5ed;
+      --error: #8c2922;
+      --highlight-ink: #23291f;
+      font-family: "Atkinson Hyperlegible Next", "Segoe UI", system-ui, sans-serif;
+      color: var(--ink);
+      background: var(--background);
+    }
+    :root[data-theme="dark"] {
+      color-scheme: dark;
+      --loss-highlight: #e7b8b3;
+      --paper: #1e2522;
+      --background: #121715;
+      --ink: #edf2eb;
+      --muted: #b7c3b8;
+      --green: #aad8b9;
+      --line: #59665d;
+      --soft: #2c3730;
+      --field: #252e28;
+      --focus: #a6dfbc;
+      --primary: #356047;
+      --primary-hover: #407553;
+      --grid-border: #829485;
+      --active-cell: #344c3c;
+      --active-border: #95c69a;
+      --excluded: #292d2a;
+      --stat-background: #263129;
+      --error: #ffb0a8;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: clamp(10px, 3vw, 40px); }
+    .sheet { max-width: 1440px; margin: auto; padding: clamp(15px, 3vw, 36px); background: var(--paper); border: 1px solid var(--line); box-shadow: 0 7px 25px #24291414; }
+    header { display: flex; justify-content: space-between; align-items: end; gap: 12px; padding-bottom: 16px; border-bottom: 3px double var(--green); }
+    header p { margin: 0 0 5px; color: var(--green); font-size: .83rem; font-weight: 700; }
+    h1, h2 { font-family: "Source Serif 4", "PT Serif", Georgia, serif; color: var(--green); margin: 0; }
+    h1 { font-size: clamp(1.7rem, 4vw, 2.6rem); line-height: 1.05; }
+    h2 { font-size: 1.4rem; }
+    .save { color: var(--muted); font-size: .8rem; text-align: right; }
+    .header-actions { display: flex; flex-wrap: wrap; justify-content: end; align-items: center; gap: 8px; }
+    .theme-switch { display: inline-flex; align-items: center; gap: 7px; min-height: 36px; cursor: pointer; white-space: nowrap; }
+    .theme-switch input {
+      appearance: none; -webkit-appearance: none; position: relative; flex: 0 0 36px;
+      width: 36px; height: 22px; margin: 0; padding: 0; border: 1px solid var(--line);
+      border-radius: 999px; background: var(--soft); cursor: pointer;
+    }
+    .theme-switch input::before {
+      content: ""; position: absolute; top: 3px; left: 3px; width: 14px; height: 14px;
+      border-radius: 50%; background: var(--muted);
+    }
+    .theme-switch input:checked { background: var(--primary); border-color: var(--green); }
+    .theme-switch input:checked::before { transform: translateX(14px); background: #fff; }
+    .match { display: grid; grid-template-columns: minmax(140px, .65fr) 1fr 1fr; gap: 12px; margin: 16px 0 8px; }
+    .roster-status { margin: 12px 0; color: var(--muted); font-size: .85rem; }
+    label { display: grid; gap: 4px; font-size: .8rem; font-weight: 650; }
+    input, select, button { color: inherit; font: inherit; }
+    input, select { width: 100%; min-width: 0; background: var(--field); border: 1px solid var(--line); border-radius: 3px; padding: 7px 8px; }
+    input:focus-visible, select:focus-visible, button:focus-visible, summary:focus-visible, .grid-scroll:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+    button { border: 1px solid var(--line); background: var(--field); border-radius: 3px; padding: 6px 10px; cursor: pointer; font-size: .85rem; font-weight: 650; }
+    button:hover:enabled { background: var(--soft); }
+    button:disabled { opacity: .5; cursor: default; }
+    .primary { background: var(--primary); border-color: var(--primary); color: white; }
+    .primary:hover:enabled { background: var(--primary-hover); }
+    details { margin: 12px 0; }
+    summary { width: fit-content; font-size: .85rem; font-weight: 650; color: var(--green); cursor: pointer; }
+    .spare-form { display: flex; align-items: end; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+    .spare-form label { flex: 0 1 250px; }
+    .spares { font-size: .83rem; color: var(--muted); margin: 6px 0; }
+    .games { margin-top: 24px; border-top: 1px solid var(--line); }
+    .game { margin: 0; border-bottom: 1px solid var(--line); }
+    .game > summary { width: auto; padding: 9px 4px; }
+    .game[open] > summary { background: var(--soft); }
+    .games-501 { margin-top: 20px; }
+    .games-501 > summary { width: auto; padding: 9px 4px; border-block: 1px solid var(--line); }
+    .games-501[open] > summary { background: var(--soft); }
+    .grids-501 { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; padding-top: 12px; }
+    .game-501 h2 { font-size: 1rem; margin-bottom: 5px; }
+    .grid-501 th, .grid-501 td { padding: 4px; }
+    .grid-501 th[scope="row"] { text-align: left; }
+    .grid-501 th.checkout { width: 106px; }
+    .grid-501 thead th:first-child { width: 200px; text-align: left; }
+    .high-score-field { position: relative; background: var(--field); border-radius: 3px; }
+    .grid-501 .high-scores, .high-score-marks { font-size: .82rem; line-height: 1.25; }
+    .grid-501 .high-scores { position: relative; background: transparent; }
+    .high-score-marks {
+      position: absolute; z-index: 1; inset: 1px; padding: 7px 8px; overflow: hidden;
+      white-space: pre; text-align: left; color: transparent; pointer-events: none;
+    }
+    .high-score-marks mark { background: var(--highlighter); color: var(--highlight-ink); }
+    .high-score-field:focus-within .high-score-marks { visibility: hidden; }
+    .game-result { margin-left: 8px; padding: 2px 6px; color: var(--muted); }
+    .game-result.win, td.checkout.win { background: var(--highlighter); color: var(--highlight-ink); }
+    .game-result.larry, td.checkout.larry { background: var(--larry-highlight); }
+    .game-result.loss { background: var(--loss-highlight); color: var(--highlight-ink); }
+    .game-header { display: flex; justify-content: end; margin: 8px 0; }
+    .remaining { color: var(--green); font-size: .85rem; }
+    .remaining output { font-size: 1.6rem; font-weight: 750; font-variant-numeric: tabular-nums; margin-left: 5px; }
+    .toolbar { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+    .toolbar .undo { margin-left: auto; }
+    .grid-scroll { overflow-x: auto; border: 1px solid var(--grid-border); }
+    table { border-collapse: collapse; width: 100%; table-layout: fixed; font-variant-numeric: tabular-nums; }
+    .score-grid { min-width: var(--grid-width, 890px); }
+    th, td { border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); text-align: center; }
+    tr > :last-child { border-right: 0; }
+    tbody tr:last-child > * { border-bottom: 0; }
+    thead th { padding: 7px 3px; background: var(--soft); font-size: .72rem; }
+    .score-grid thead th:first-child { width: 167px; text-align: left; padding-left: 8px; }
+    .score-grid thead th.stat { width: 60px; }
+    .score-grid thead th.checkout { width: 112px; }
+    .score-grid tbody th { padding: 5px; background: var(--paper); }
+    .score-grid tr > :first-child { position: sticky; left: 0; z-index: 1; box-shadow: 1px 0 var(--line); }
+    .name-input { font-size: .82rem; font-weight: 500; }
+    .score-grid tbody th .name-input:disabled { opacity: 1; color: var(--ink); background: transparent; border-color: transparent; }
+    .visit { position: relative; height: 47px; padding: 0; }
+    .visit.split::after { content: ""; position: absolute; inset: 0; background: var(--line); clip-path: polygon(0 calc(100% - 1px), 100% 0, 100% 1px, 0 100%); pointer-events: none; }
+    .visit input { position: absolute; inset: 0 auto auto 0; width: 54%; height: 58%; border: 0; padding: 2px; border-radius: 0; text-align: center; background: transparent; font-size: .93rem; font-weight: 650; }
+    .visit.first input { width: 100%; height: 100%; }
+    .visit input:focus-visible { outline-offset: -2px; }
+    .visit input:disabled { opacity: 1; }
+    .visit .running { position: absolute; right: 4px; bottom: 3px; color: var(--muted); font-size: .82rem; font-weight: 650; pointer-events: none; }
+    :root:not([data-theme="dark"]) .visit .running { color: var(--ink); }
+    .visit.next { background: var(--active-cell); box-shadow: inset 0 0 0 2px var(--active-border); }
+    .visit.first.high { background: var(--highlighter); }
+    .visit.high input { color: var(--highlight-ink); }
+    .visit.split.high::before { content: ""; position: absolute; inset: 0; background: var(--highlighter); clip-path: polygon(0 0, 100% 0, 0 100%); pointer-events: none; }
+    .visit.excluded { background: var(--excluded); }
+    .visit.excluded input { color: var(--muted); text-decoration: line-through; }
+    .visit[title] { cursor: help; }
+    td.stat { background: var(--stat-background); font-size: .86rem; }
+    td.average { font-weight: 700; }
+    td.checkout { padding: 4px; }
+    .checkout-fields { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 3px; }
+    td.checkout input { padding: 7px 2px; text-align: center; font-weight: 650; }
+    td.checkout input[aria-invalid="true"] { border-color: var(--error); }
+    .checkout-separator { color: var(--muted); font-size: .8rem; }
+    td.checkout.win input { background: transparent; }
+    td.checkout.win .checkout-separator { color: var(--highlight-ink); }
+    .result-actions { display: flex; gap: 6px; margin-top: 8px; }
+    .result-actions [hidden] { display: none; }
+    .message { min-height: 1.2em; margin: 8px 0 14px; color: var(--muted); font-size: .85rem; }
+    .message.error { color: var(--error); font-weight: 650; }
+    .totals { width: min(100%, 480px); margin-top: 8px; border: 1px solid var(--line); }
+    .totals th, .totals td { padding: 5px 8px; font-size: .8rem; }
+    .totals th:first-child { text-align: left; }
+    .night { border-top: 1px solid var(--line); padding-top: 12px; margin-top: 24px; }
+    .night label { max-width: 250px; margin-top: 8px; }
+    .night-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }
+    .night-actions[hidden] { display: none; }
+    .night-actions span { font-size: .83rem; }
+    .secondary { color: var(--muted); }
+    .player-picker { display: none; }
+    [hidden] { display: none !important; }
+    .review-navigation { display: flex; justify-content: end; gap: 8px; margin: 20px 0 8px; }
+    .review-page { max-width: 920px; margin-inline: auto; padding-top: 18px; }
+    .review-page h2 { margin: 18px 0 10px; }
+    .review-page h3 { font-size: 1rem; margin: 18px 0 8px; color: var(--green); }
+    .review-page h4 { font-size: .9rem; margin: 0 0 6px; color: var(--green); }
+    .review-page p { font-size: .9rem; }
+    .review-meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(130px, 100%), 1fr)); gap: 8px 16px; margin: 8px 0 14px; }
+    .review-meta dt { color: var(--muted); font-size: .8rem; margin-bottom: 3px; }
+    .review-meta dd { margin: 0; font-weight: 650; overflow-wrap: anywhere; }
+    .review-summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 285px), 1fr)); gap: 12px 20px; }
+    .review-summary-grid + .review-summary-grid { margin-top: 12px; }
+    .review-table { border: 1px solid var(--line); table-layout: auto; }
+    .review-table th, .review-table td { padding: 5px; font-size: .85rem; overflow-wrap: anywhere; }
+    .review-table th[scope="row"] { text-align: left; font-weight: 550; }
+    .review-table tfoot { background: var(--soft); font-weight: 700; }
+    .review-issues ul { margin: 0; border-left: 3px solid var(--error); padding: 1px 0 1px 12px; list-style: none; }
+    .review-issues li + li { margin-top: 7px; }
+    .review-issues button { text-align: left; font-weight: 500; }
+    .review-submit { border-top: 1px solid var(--line); margin-top: 20px; padding-top: 12px; }
+    .review-list { margin: 0; padding: 0; list-style: none; font-size: .9rem; overflow-wrap: anywhere; }
+    .review-list li + li { margin-top: 7px; }
+    .review-high { background: var(--highlighter); color: var(--highlight-ink); }
+    .review-roster-choice { display: flex; align-items: center; gap: 6px; width: fit-content; margin-top: 2px; font-weight: 500; }
+    .review-roster-choice input { width: 16px; height: 16px; flex: none; margin: 0; accent-color: var(--primary); }
+    @media (max-width: 620px), (max-height: 520px) and (pointer: coarse) {
+      .player-field { display: flex; align-items: stretch; gap: 3px; }
+      .player-field > input { flex: 1; }
+      .player-picker {
+        position: relative; display: grid; place-items: center; flex: 0 0 32px;
+        min-height: 36px; background: var(--soft); border: 1px solid var(--line);
+        border-radius: 3px; color: var(--green);
+      }
+      .player-picker:focus-within { outline: 2px solid var(--green); }
+      .player-picker:has(select:disabled) { display: none; }
+      .player-picker select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; }
+    }
+    @media (max-width: 620px) {
+      .grid-501 thead th:first-child { width: 45%; }
+      .match { grid-template-columns: 1fr 1fr; }
+      .match label:first-child { grid-column: span 2; width: min(100%, 180px); }
+      .score-grid thead th:first-child { width: 145px; }
+      .toolbar .undo { margin-left: 0; }
+    }
+  </style>
+</head>
+<body>
+  <main class="sheet">
+    <header>
+      <div><p>Gateway Men’s Dart League</p><h1>Nightly Scoresheet</h1></div>
+      <div class="header-actions">
+        <label class="theme-switch">
+          <input id="night-mode" type="checkbox" role="switch">
+          <span>Dark mode</span>
+        </label>
+        <span id="save-state" class="save" role="status"></span>
+      </div>
+    </header>
+    <div id="scoring-page">
+    <p id="roster-status" class="roster-status" role="status" hidden></p>
+    <section class="match" aria-label="Match setup">
+      <label>Date<input id="match-date" type="date"></label>
+      <label>Team<select id="team"></select></label>
+      <label>Opponent<select id="opponent"></select></label>
+    </section>
+    <details id="spare-setup">
+      <summary>Spares for this sheet</summary>
+      <form id="spare-form" class="spare-form">
+        <label>Player<input id="spare-name" list="spare-options" placeholder="Select or type a name" autocomplete="off" required></label>
+        <button type="submit">Add spare</button>
+      </form>
+      <datalist id="spare-options"></datalist>
+      <p id="spares" class="spares" role="status"></p>
+    </details>
+    <details id="games-501" class="games-501" open>
+      <summary>501 games</summary>
+      <div id="grids-501" class="grids-501"></div>
+    </details>
+    <div id="games" class="games" role="group" aria-label="1001 games"></div>
+    <datalist id="lineup-options"></datalist>
+    <template id="game-template"><section>
+      <form data-part="visit-form" hidden><button type="submit">Confirm score</button></form>
+      <div class="game-header">
+        <div class="remaining"><span data-part="remaining-label">Team remaining</span> <output data-part="remaining"></output></div>
+      </div>
+      <div class="toolbar">
+        <button data-part="last-order" type="button">Use Last Order</button>
+        <button data-part="last-average" type="button">Order by Last Average</button>
+        <button data-part="start" class="primary" type="button">Start scoring</button>
+        <button data-part="undo" class="undo" type="button">Undo score</button>
+      </div>
+      <div class="grid-scroll" tabindex="0" role="region" aria-label="1001 score grid">
+        <table class="score-grid" data-part="score-grid"></table>
+      </div>
+      <div class="result-actions">
+        <button data-part="record-loss" type="button">Record loss</button>
+        <button data-part="clear-result" type="button" hidden>Clear result</button>
+      </div>
+      <p data-part="message" class="message" role="status"></p>
+    </section></template>
+    <details>
+      <summary>Cumulative shots and points</summary>
+      <table class="totals" aria-label="Cumulative shots and points">
+        <thead><tr><th scope="col">Player</th><th scope="col">Shots</th><th scope="col">Points</th><th scope="col">Average</th></tr></thead>
+        <tbody id="totals"></tbody>
+      </table>
+    </details>
+    <details class="night">
+      <summary>End-of-night details</summary>
+      <label>Most Sportsmanlike Player (MSP)<input id="msp" list="msp-options" autocomplete="off"></label>
+      <datalist id="msp-options"></datalist>
+    </details>
+    <button id="new-sheet" class="secondary" type="button">New scoresheet</button>
+    <div class="review-navigation">
+      <button id="open-review" class="primary" type="button">Review and Submit</button>
+    </div>
+    <div id="reset-options" class="night-actions" hidden>
+      <span>Replace this sheet and its saved scores?</span>
+      <button id="reset-confirm" type="button">Replace sheet</button>
+      <button id="reset-cancel" type="button">Cancel</button>
+    </div>
+    </div>
+    <section id="review-page" class="review-page" aria-labelledby="review-heading" hidden>
+      <button id="back-to-sheet" type="button">Back to scoresheet</button>
+      <h2 id="review-heading" tabindex="-1">Review and Submit</h2>
+      <section class="review-issues" aria-labelledby="review-issues-heading">
+        <h3 id="review-issues-heading">Needs attention</h3>
+        <ul id="review-issue-list"></ul>
+        <p id="review-complete" role="status" hidden>All required match details and game results are filled in.</p>
+      </section>
+      <section aria-labelledby="review-summary-heading">
+        <h3 id="review-summary-heading">Night summary</h3>
+        <dl id="review-meta" class="review-meta"></dl>
+        <div class="review-summary-grid">
+          <div>
+            <h4 id="review-results-heading">Results</h4>
+            <table class="review-table" aria-labelledby="review-results-heading">
+              <thead><tr><th scope="col">Games</th><th scope="col">Wins</th><th scope="col">Losses</th><th scope="col">Unrecorded</th></tr></thead>
+              <tbody id="review-results"></tbody>
+              <tfoot id="review-overall"></tfoot>
+            </table>
+          </div>
+          <div>
+            <h4 id="review-averages-heading">1001 averages</h4>
+            <table class="review-table" aria-labelledby="review-averages-heading">
+              <thead><tr><th scope="col">Player</th><th scope="col">Shots</th><th scope="col">Points</th><th scope="col">Average</th></tr></thead>
+              <tbody id="review-averages"></tbody>
+              <tfoot id="review-team-average"></tfoot>
+            </table>
+          </div>
+        </div>
+        <div class="review-summary-grid">
+          <div>
+            <h4>High scores</h4>
+            <ul id="review-highs" class="review-list"></ul>
+          </div>
+          <div>
+            <h4>Finishes</h4>
+            <ul id="review-finishes" class="review-list"></ul>
+          </div>
+        </div>
+      </section>
+      <section aria-labelledby="review-players-heading">
+        <h3 id="review-players-heading">Spares and new players</h3>
+        <div class="review-summary-grid">
+          <div>
+            <h4>Spares</h4>
+            <ul id="review-spares" class="review-list"></ul>
+          </div>
+          <div>
+            <h4>New players</h4>
+            <ul id="review-new-players" class="review-list"></ul>
+          </div>
+        </div>
+      </section>
+      <div class="review-submit">
+        <button type="button" disabled aria-describedby="submission-status">Submit results</button>
+        <p id="submission-status">Online submission is awaiting the league website setup. Your scores are saved on this device.</p>
+      </div>
+    </section>
+  </main>
+  
+  <script>
+    "use strict";
+
+    let roster = [];
+    let rosterByTeam = new Map();
+    const byId = id => document.getElementById(id);
+    const storageKey = "gmdl-prototype-1001-v1";
+    const rosterUrl = "./league-roster.json";
+    const playerCount = 4;
+    const initialColumns = 8;
+    const cutoff = 130;
+    const highScore = 95;
+    const average = ({ points, shots }) => shots ? (points / shots).toFixed(2) : "—";
+    const nameKey = name => name.trim().toLocaleLowerCase("en-CA");
+    const cleanName = name => name.trim().replace(/\s+/g, " ");
+    const blankTotals = () => ({ shots: 0, points: 0 });
+
+    function new501Games() {
+      return Array.from({ length: 4 }, () => ({
+        lineup: ["", ""], highs: [[], []], result: null
+      }));
+    }
+
+    function newSheet() {
+      const now = new Date();
+      const localDate = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+      return {
+        date: localDate.toISOString().slice(0, 10),
+        team: "", opponent: "", spares: [], custom: [], rosterOptOuts: [], msp: "",
+        games501: new501Games(),
+        games: Array.from({ length: 5 }, () => ({
+          lineup: Array(playerCount).fill(""), visits: [], history: [], result: null
+        }))
+      };
+    }
+
+    let storageProblem = false;
+    let sheet = newSheet();
+    try {
+      const saved = JSON.parse(localStorage.getItem(storageKey));
+      if (saved?.games?.length === 5) {
+        sheet = saved;
+        sheet.games501 ??= new501Games();
+        sheet.rosterOptOuts ??= [];
+      }
+    } catch {
+      storageProblem = true;
+    }
+
+    function save() {
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(sheet));
+        storageProblem = false;
+      } catch {
+        storageProblem = true;
+      }
+      showSaveState();
+    }
+
+    function showSaveState() {
+      const message = storageProblem ? "Local saving unavailable" : "Saved on this device";
+      if (byId("save-state").textContent !== message) byId("save-state").textContent = message;
+    }
+
+    function analyze(game) {
+      const totals = Array.from({ length: playerCount }, blankTotals);
+      const recorded = [];
+      let remaining = 1001;
+      let next = null;
+      for (let index = 0; remaining >= cutoff; index++) {
+        const score = game.visits[index];
+        if (score == null) {
+          if (!game.result) next = index;
+          break;
+        }
+        const player = totals[index % playerCount];
+        player.shots++;
+        player.points += score;
+        remaining -= score;
+        recorded[index] = player.points;
+      }
+      return { totals, recorded, remaining, next };
+    }
+
+    const gameSections = byId("games").children;
+    const gamePart = (gameIndex, part) => gameSections[gameIndex].querySelector('[data-part="' + part + '"]');
+    const hasScores = game => game.visits.some(score => score != null);
+    const hasPlay = game => hasScores(game) || Boolean(game.result);
+    const hasPlay501 = game => Boolean(game.result) || game.highs.some(scores => scores.length);
+    const hasSheetPlay = () => sheet.games.some(hasPlay) || sheet.games501.some(hasPlay501);
+    const ready = game => game.lineup.every(Boolean) &&
+      new Set(game.lineup.map(nameKey)).size === playerCount;
+    const canRecordResult = game => Boolean(sheet.team) && ready(game);
+
+    function isLarry(result) {
+      return result?.type === "win" && result.checkout === "3x1";
+    }
+
+    function renderResultBadge(badge, result) {
+      const larry = isLarry(result);
+      badge.hidden = !result;
+      badge.textContent = larry ? "Win \u00b7 Larry" : result?.type === "win" ? "Win" : result ? "Loss" : "";
+      badge.classList.toggle("win", result?.type === "win");
+      badge.classList.toggle("loss", result?.type === "loss");
+      badge.classList.toggle("larry", larry);
+    }
+
+    function message(gameIndex, value, error = false) {
+      const status = gamePart(gameIndex, "message");
+      status.textContent = value;
+      status.classList.toggle("error", error);
+    }
+
+    function element(tag, content, className) {
+      const result = document.createElement(tag);
+      if (content != null) result.textContent = content;
+      if (className) result.className = className;
+      return result;
+    }
+
+    function listOptions(id, values) {
+      byId(id).replaceChildren(...values.map(value => new Option(value, value)));
+      for (const select of document.querySelectorAll('select[data-player-list="' + id + '"]')) {
+        updatePlayerPicker(select);
+      }
+    }
+
+    function updatePlayerPicker(select) {
+      const options = byId(select.dataset.playerList).options;
+      select.replaceChildren(new Option("Choose a player", ""), ...[...options]
+        .map(option => new Option(option.value, option.value)));
+      select.options[0].disabled = true;
+      select.disabled = select.closest(".player-field").firstElementChild.disabled || !options.length;
+    }
+
+    function addPlayerPicker(input) {
+      const field = element("span", null, "player-field");
+      const picker = element("span", null, "player-picker");
+      const arrow = element("span", "\u25be");
+      arrow.setAttribute("aria-hidden", "true");
+      const select = element("select");
+      select.dataset.playerList = input.getAttribute("list");
+      select.setAttribute("aria-label", "Choose " + (input.getAttribute("aria-label") ?? 
+        (input.id === "msp" ? "Most Sportsmanlike Player" : "a spare")));
+      input.before(field);
+      picker.append(arrow, select);
+      field.append(input, picker);
+      select.addEventListener("change", () => {
+        if (!select.value) return;
+        input.value = select.value;
+        select.selectedIndex = 0;
+        input.dispatchEvent(new Event("change", { bubbles: true }));
+      });
+      updatePlayerPicker(select);
+    }
+
+    function setPlayerDisabled(input, disabled) {
+      input.disabled = disabled;
+      const select = input.parentElement.querySelector("select[data-player-list]");
+      if (select) select.disabled = disabled || select.options.length < 2;
+    }
+
+    function lineupNames() {
+      return [...new Set([...(rosterByTeam.get(sheet.team) ?? []), ...sheet.custom, ...sheet.spares])]
+        .sort((a, b) => a.localeCompare(b, "en-CA"));
+    }
+
+    function displayName(name) {
+      return sheet.spares.includes(name) ? name + " (S)" : name;
+    }
+
+    function resolvePlayer(value) {
+      const typed = cleanName(value);
+      const key = nameKey(typed);
+      return lineupNames().find(name => nameKey(name) === key || nameKey(displayName(name)) === key) ?? typed;
+    }
+
+    function refreshLists() {
+      listOptions("lineup-options", lineupNames().map(displayName));
+      listOptions("spare-options", [...new Set(roster.filter(team => team.name !== sheet.team)
+        .flatMap(team => team.players))].sort((a, b) => a.localeCompare(b, "en-CA")));
+      listOptions("msp-options", rosterByTeam.get(sheet.opponent) ?? []);
+      byId("spares").textContent = sheet.spares.map(displayName).join(", ");
+    }
+
+    function renderSetup() {
+      const scored = hasSheetPlay();
+      byId("match-date").value = sheet.date;
+      for (const field of ["team", "opponent"]) {
+        const other = field === "team" ? sheet.opponent : sheet.team;
+        const select = byId(field);
+        const names = roster.map(team => team.name).filter(name => name !== other);
+        if (sheet[field] && !names.includes(sheet[field])) names.push(sheet[field]);
+        select.replaceChildren(new Option("Select " + field, ""), ...names
+          .map(name => new Option(name, name)));
+        select.value = sheet[field];
+      }
+      byId("team").disabled = scored || !roster.length;
+      byId("opponent").disabled = !roster.length;
+      byId("msp").value = sheet.msp;
+      byId("spare-name").disabled = !sheet.team;
+      byId("spare-form").querySelector("button").disabled = !sheet.team;
+      refreshLists();
+    }
+
+    function setupGames() {
+      const games = byId("games");
+      sheet.games.forEach((_, index) => {
+        const section = element("details", null, "game");
+        const summary = element("summary", "1001 #" + (index + 1));
+        summary.id = "game-label-" + index;
+        const resultBadge = element("span", null, "game-result");
+        resultBadge.dataset.part = "result-badge";
+        resultBadge.hidden = true;
+        summary.append(resultBadge);
+        const panel = byId("game-template").content.firstElementChild.cloneNode(true);
+        panel.setAttribute("aria-labelledby", summary.id);
+        panel.querySelector("table").setAttribute("aria-labelledby", summary.id);
+        section.append(summary, panel);
+        games.append(section);
+        const visitForm = gamePart(index, "visit-form");
+        visitForm.id = "visit-form-" + index;
+        visitForm.addEventListener("submit", event => {
+          event.preventDefault();
+          const input = document.activeElement;
+          if (input.form === visitForm && input.hasAttribute("data-index")) {
+            recordScore(index, input, Number(input.dataset.index));
+          }
+        });
+        gamePart(index, "last-order").addEventListener("click", () => usePreviousOrder(index, false));
+        gamePart(index, "last-average").addEventListener("click", () => usePreviousOrder(index, true));
+        gamePart(index, "start").addEventListener("click", () => focusScore(index, analyze(sheet.games[index]).next));
+        gamePart(index, "undo").addEventListener("click", () => undoScore(index));
+        gamePart(index, "record-loss").addEventListener("click", () => {
+          if (canRecordResult(sheet.games[index]) && !sheet.games[index].result) {
+            setResult(index, { type: "loss" });
+          }
+        });
+        gamePart(index, "clear-result").addEventListener("click", () => setResult(index, null));
+      });
+    }
+
+    function renderToolbar(gameIndex, analysis) {
+      const game = sheet.games[gameIndex];
+      const prior = sheet.games[gameIndex - 1];
+      const locked = hasPlay(game);
+      const lastOrder = gamePart(gameIndex, "last-order");
+      const start = gamePart(gameIndex, "start");
+      lastOrder.disabled = !sheet.team || locked || !prior || !ready(prior);
+      gamePart(gameIndex, "last-average").disabled = lastOrder.disabled ||
+        !analyze(prior).totals.every(player => player.shots);
+      start.disabled = !sheet.team || !ready(game) || analysis.next == null;
+      start.textContent = hasScores(game) ? "Resume scoring" : "Start scoring";
+      gamePart(gameIndex, "undo").disabled = !game.history.length;
+    }
+
+    function refreshGameState(gameIndex, analysis) {
+      const game = sheet.games[gameIndex];
+      gamePart(gameIndex, "remaining").value = analysis.remaining;
+      gamePart(gameIndex, "remaining-label").textContent = game.result?.type === "win" || analysis.remaining < cutoff
+        ? "Remaining at last recorded visit" : "Team remaining";
+      renderToolbar(gameIndex, analysis);
+      renderResultBadge(gamePart(gameIndex, "result-badge"), game.result);
+      const lossButton = gamePart(gameIndex, "record-loss");
+      lossButton.hidden = Boolean(game.result);
+      lossButton.disabled = !canRecordResult(game);
+      gamePart(gameIndex, "clear-result").hidden = !game.result;
+      for (const input of gamePart(gameIndex, "score-grid").querySelectorAll("input[data-checkout]")) {
+        input.disabled = !canRecordResult(game) || game.result?.type === "loss";
+      }
+      const grid = gamePart(gameIndex, "score-grid");
+      for (const input of grid.querySelectorAll("input[data-index]")) {
+        const index = Number(input.dataset.index);
+        const score = game.visits[index];
+        const recorded = analysis.recorded[index] != null;
+        const next = index === analysis.next && ready(game) && Boolean(sheet.team);
+        const cell = input.parentElement;
+        input.disabled = !next && score == null;
+        input.tabIndex = next ? 0 : -1;
+        cell.classList.toggle("next", next);
+        cell.classList.toggle("high", recorded && score >= highScore);
+        cell.classList.toggle("excluded", !recorded && score != null);
+        const running = cell.querySelector(".running");
+        if (running) {
+          running.textContent = recorded ? analysis.recorded[index] : "";
+          if (recorded) running.setAttribute("aria-label", "Running points " + analysis.recorded[index]);
+          else running.removeAttribute("aria-label");
+        }
+        if (!recorded && score != null) {
+          cell.title = "Outside the recording cutoff. This score is excluded from totals.";
+        } else {
+          cell.removeAttribute("title");
+        }
+      }
+      [...grid.tBodies[0].rows].forEach((row, index) => {
+        setPlayerDisabled(row.querySelector(".name-input"), !sheet.team || hasPlay(game));
+        const totals = analysis.totals[index];
+        const [shots, points, avg] = row.querySelectorAll("td.stat");
+        shots.textContent = totals.shots;
+        points.textContent = totals.points;
+        avg.textContent = average(totals);
+      });
+      if (!sheet.team) message(gameIndex, "Choose your team to enter a lineup.");
+      else if (!ready(game)) message(gameIndex, "Enter four different players in throwing order.");
+      else if (game.result?.type === "win") {
+        message(gameIndex, "Win recorded for " + displayName(game.lineup[game.result.row]) +
+          " with " + game.result.checkout + ".");
+      } else if (game.result?.type === "loss") message(gameIndex, "Loss recorded. Averages reflect the recorded visits.");
+      else if (analysis.next == null) message(gameIndex, "Team is below 130. Recorded averages are complete.");
+      else if (game.visits.some((score, index) => score != null && analysis.recorded[index] == null)) {
+        message(gameIndex, "Some saved scores are outside the recording cutoff and excluded from totals.");
+      } else message(gameIndex, "Enter confirms the score. Click a recorded score to correct it.");
+    }
+
+    function saveLineup(gameIndex, input, row) {
+      const game = sheet.games[gameIndex];
+      if (hasPlay(game)) return;
+      const name = resolvePlayer(input.value);
+      if (name && game.lineup.some((other, index) => index !== row && nameKey(other) === nameKey(name))) {
+        input.value = displayName(game.lineup[row]);
+        message(gameIndex, "A player can appear only once in a 1001 lineup.", true);
+        return;
+      }
+      if (name && !lineupNames().includes(name)) sheet.custom.push(name);
+      game.lineup[row] = name;
+      input.value = displayName(name);
+      input.setAttribute("aria-label", "Player " + (row + 1) + " name");
+      refreshLists();
+      refreshGameState(gameIndex, analyze(game));
+      refreshNextToolbar(gameIndex);
+      save();
+    }
+
+    function lineupCell(gameIndex, game, row) {
+      const heading = element("th");
+      heading.scope = "row";
+      const input = element("input", null, "name-input");
+      input.id = "player-" + gameIndex + "-" + row;
+      input.value = displayName(game.lineup[row]);
+      input.placeholder = "Player " + (row + 1);
+      input.setAttribute("aria-label", "Player " + (row + 1) + " name");
+      input.setAttribute("list", "lineup-options");
+      input.autocomplete = "off";
+      input.disabled = !sheet.team || hasPlay(game);
+      input.addEventListener("change", () => saveLineup(gameIndex, input, row));
+      input.addEventListener("keydown", event => {
+        if (event.key !== "Enter") return;
+        event.preventDefault();
+        if (input.value !== displayName(game.lineup[row])) saveLineup(gameIndex, input, row);
+        if (row < playerCount - 1) byId("player-" + gameIndex + "-" + (row + 1)).focus();
+        else if (ready(game)) focusScore(gameIndex, analyze(game).next);
+      });
+      heading.append(input);
+      addPlayerPicker(input);
+      return heading;
+    }
+
+    function focusScore(gameIndex, index) {
+      if (index == null) return;
+      const input = byId("visit-" + gameIndex + "-" + index);
+      input?.focus();
+      input?.select();
+    }
+
+    function recordScore(gameIndex, input, index) {
+      const value = input.value.trim();
+      const score = Number(value);
+      if (!/^\d{1,3}$/.test(value) || score > 180) {
+        input.setAttribute("aria-invalid", "true");
+        message(gameIndex, "Enter a whole-number visit score from 0 to 180.", true);
+        return;
+      }
+      const game = sheet.games[gameIndex];
+      const prior = game.visits[index] ?? null;
+      const analysis = analyze(game);
+      if (prior == null && analysis.next !== index) return;
+      if (prior !== score) {
+        game.history.push({ index, prior });
+        game.visits[index] = score;
+        save();
+      }
+      input.value = score;
+      input.removeAttribute("aria-invalid");
+      updateScores(gameIndex, true);
+    }
+
+    function visitCell(gameIndex, game, row, shot) {
+      const index = shot * playerCount + row;
+      const original = game.visits[index];
+      const cell = element("td", null, "visit " + (shot ? "split" : "first"));
+      const input = element("input");
+      input.id = "visit-" + gameIndex + "-" + index;
+      input.dataset.index = index;
+      input.inputMode = "numeric";
+      input.enterKeyHint = "done";
+      input.setAttribute("form", "visit-form-" + gameIndex);
+      input.autocomplete = "off";
+      input.value = original ?? "";
+      input.setAttribute("aria-label", "Player " + (row + 1) + ", shot " + (shot + 1) + " score");
+      input.addEventListener("focus", () => input.select());
+      input.addEventListener("input", () => input.removeAttribute("aria-invalid"));
+      input.addEventListener("blur", () => {
+        input.value = game.visits[index] ?? "";
+        input.removeAttribute("aria-invalid");
+      });
+      input.addEventListener("keydown", event => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          recordScore(gameIndex, input, index);
+        } else if (event.key === "Escape") {
+          event.preventDefault();
+          input.value = game.visits[index] ?? "";
+          input.removeAttribute("aria-invalid");
+          const current = analyze(game);
+          refreshGameState(gameIndex, current);
+          focusScore(gameIndex, current.next);
+        }
+      });
+      cell.append(input);
+      if (shot) cell.append(element("span", null, "running"));
+      cell.addEventListener("click", event => {
+        if (event.target === cell && !input.disabled) focusScore(gameIndex, index);
+      });
+      return cell;
+    }
+
+    function setResult(gameIndex, result) {
+      const game = sheet.games[gameIndex];
+      game.result = result;
+      save();
+      updateScores(gameIndex);
+      if (!result && analyze(game).next == null) {
+        gamePart(gameIndex, "score-grid").querySelector("input[data-checkout]").focus();
+      }
+    }
+
+    function checkoutCell(game, row, { enabled, set, notify }) {
+      const won = game.result?.type === "win" && game.result.row === row;
+      const [savedScore = "", savedDouble = ""] = won ? game.result.checkout.split("x") : [];
+      const cell = element("td", null, won ? "checkout win" : "checkout");
+      cell.classList.toggle("larry", won && isLarry(game.result));
+      const fields = element("div", null, "checkout-fields");
+      const scoreInput = element("input");
+      const doubleInput = element("input");
+      const separator = element("span", "\u00d7", "checkout-separator");
+      separator.setAttribute("aria-hidden", "true");
+      for (const [input, label] of [[scoreInput, "checkout starting score"], [doubleInput, "finishing double"]]) {
+        input.disabled = !enabled();
+        input.dataset.checkout = "";
+        input.inputMode = "numeric";
+        input.autocomplete = "off";
+        input.setAttribute("aria-label", "Player " + (row + 1) + " " + label);
+        input.addEventListener("focus", () => input.select());
+        input.addEventListener("input", () => input.removeAttribute("aria-invalid"));
+      }
+      const restore = () => {
+        scoreInput.value = savedScore;
+        doubleInput.value = savedDouble;
+        scoreInput.removeAttribute("aria-invalid");
+        doubleInput.removeAttribute("aria-invalid");
+      };
+      restore();
+      fields.addEventListener("focusout", event => {
+        if (!fields.contains(event.relatedTarget)) {
+          if (fields.querySelector('[aria-invalid="true"]')) notify();
+          restore();
+        }
+      });
+      cell.addEventListener("click", event => {
+        if (scoreInput.disabled) return;
+        if ((event.target === doubleInput && !scoreInput.value.trim()) ||
+            (event.target !== scoreInput && event.target !== doubleInput)) scoreInput.focus();
+      });
+      fields.addEventListener("keydown", event => {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          restore();
+          notify();
+          scoreInput.focus();
+          return;
+        }
+        if (event.key !== "Enter") return;
+        event.preventDefault();
+        if (!enabled()) return;
+        const pointsText = scoreInput.value.trim();
+        const points = Number(pointsText);
+        if (!/^\d{1,3}$/.test(pointsText) || points < 2 || points > 170) {
+          scoreInput.setAttribute("aria-invalid", "true");
+          notify("Enter a checkout starting score from 2 to 170.");
+          scoreInput.focus();
+          return;
+        }
+        if (event.target === scoreInput) {
+          notify();
+          doubleInput.focus();
+          return;
+        }
+        const doubleText = doubleInput.value.trim();
+        const double = Number(doubleText);
+        if (!/^\d{1,2}$/.test(doubleText) ||
+            (double !== 25 && (double < 1 || double > 20)) || points < double * 2) {
+          doubleInput.setAttribute("aria-invalid", "true");
+          notify("Enter a double from 1 to 20, or 25 for bull. It must fit the starting score.");
+          return;
+        }
+        set({ type: "win", row, checkout: points + "x" + double });
+      });
+      fields.append(scoreInput, separator, doubleInput);
+      cell.append(fields);
+      return cell;
+    }
+
+    function renderGrid(gameIndex, game, analysis, keepInputs = false) {
+      const grid = gamePart(gameIndex, "score-grid");
+      const columns = Math.max(initialColumns, Math.ceil(game.visits.length / playerCount),
+        analysis.next == null ? 0 : Math.floor(analysis.next / playerCount) + 1);
+      grid.style.setProperty("--grid-width", (457 + columns * 68) + "px");
+      if (keepInputs && grid.tBodies[0]) {
+        const header = grid.tHead.rows[0];
+        let existing = header.cells.length - 5;
+        const rows = [...grid.tBodies[0].rows];
+        while (existing < columns) {
+          const heading = element("th", "Shot " + (existing + 1));
+          heading.scope = "col";
+          header.cells[existing + 1].before(heading);
+          rows.forEach((row, index) => row.cells[existing + 1].before(
+            visitCell(gameIndex, game, index, existing)));
+          existing++;
+        }
+        return;
+      }
+      const head = element("thead");
+      const header = element("tr");
+      ["Name", ...Array.from({ length: columns }, (_, index) => "Shot " + (index + 1)),
+        "Total shots", "Total points", "Average", "Double Out"].forEach((label, index) => {
+        const heading = element("th", label, label === "Double Out" ? "checkout" : index > columns ? "stat" : null);
+        heading.scope = "col";
+        header.append(heading);
+      });
+      head.append(header);
+      const body = element("tbody");
+      analysis.totals.forEach((totals, row) => {
+        const line = element("tr");
+        line.append(lineupCell(gameIndex, game, row));
+        for (let shot = 0; shot < columns; shot++) line.append(visitCell(gameIndex, game, row, shot));
+        line.append(element("td", totals.shots, "stat"), element("td", totals.points, "stat"),
+          element("td", average(totals), "stat average"), checkoutCell(game, row, {
+            enabled: () => canRecordResult(game) && game.result?.type !== "loss",
+            set: result => setResult(gameIndex, result),
+            notify: error => error ? message(gameIndex, error, true) : refreshGameState(gameIndex, analyze(game))
+          }));
+        body.append(line);
+      });
+      grid.replaceChildren(head, body);
+    }
+
+    function nightTotals() {
+      const all = new Map();
+      for (const game of sheet.games) {
+        analyze(game).totals.forEach((totals, row) => {
+          const name = game.lineup[row];
+          if (!name || !totals.shots) return;
+          if (!all.has(name)) all.set(name, blankTotals());
+          all.get(name).shots += totals.shots;
+          all.get(name).points += totals.points;
+        });
+      }
+      return [...all].sort(([a], [b]) => a.localeCompare(b, "en-CA"));
+    }
+
+    function renderTotals() {
+      byId("totals").replaceChildren(...nightTotals()
+        .map(([name, totals]) => {
+          const row = element("tr");
+          const heading = element("th", displayName(name));
+          heading.scope = "row";
+          row.append(heading, element("td", totals.shots), element("td", totals.points),
+            element("td", average(totals)));
+          return row;
+        }));
+    }
+
+    function renderGame(gameIndex, focusNext = false, keepInputs = false) {
+      const game = sheet.games[gameIndex];
+      const analysis = analyze(game);
+      renderGrid(gameIndex, game, analysis, keepInputs);
+      refreshGameState(gameIndex, analysis);
+      if (focusNext && analysis.next != null) focusScore(gameIndex, analysis.next);
+      else if (focusNext) {
+        const status = gamePart(gameIndex, "message");
+        status.tabIndex = -1;
+        status.focus();
+      }
+    }
+
+    function render501(index) {
+      const game = sheet.games501[index];
+      const root = byId("grids-501");
+      const section = element("section", null, "game-501");
+      const heading = element("h2", "501 #" + (index + 1));
+      heading.id = "game-501-label-" + index;
+      section.setAttribute("aria-labelledby", heading.id);
+      const table = element("table", null, "grid-501");
+      table.setAttribute("aria-labelledby", heading.id);
+      const header = table.createTHead().insertRow();
+      for (const label of ["Player Name", "High Scores", "Double Out"]) {
+        const cell = element("th", label, label === "Double Out" ? "checkout" : null);
+        cell.scope = "col";
+        header.append(cell);
+      }
+      const body = table.createTBody();
+      const actions = element("div", null, "result-actions");
+      const resultButton = element("button");
+      resultButton.type = "button";
+      const status = element("p", null, "message");
+      status.tabIndex = -1;
+      status.setAttribute("role", "status");
+
+      function notify(error) {
+        status.classList.toggle("error", Boolean(error));
+        if (error) status.textContent = error;
+        else if (game.result?.type === "win") {
+          status.textContent = "Win recorded for " + displayName(game.lineup[game.result.row]) + ".";
+        } else status.textContent = game.result ? "Loss recorded." : "";
+      }
+
+      function changeResult(result) {
+        game.result = result;
+        save();
+        byId("team").disabled = !roster.length || hasSheetPlay();
+        render501(index).focus();
+      }
+
+      function refresh501() {
+        const result = game.result;
+        renderResultBadge(badge, result);
+        resultButton.textContent = result ? "Clear result" : "Record loss";
+        resultButton.disabled = !sheet.team || !game.lineup.some(Boolean);
+        [...body.rows].forEach((row, slot) => {
+          const enabled = Boolean(sheet.team && game.lineup[slot]);
+          row.querySelector(".high-scores").disabled = !enabled;
+          for (const input of row.querySelectorAll("input[data-checkout]")) {
+            input.disabled = !enabled || result?.type === "loss";
+          }
+        });
+        notify();
+      }
+
+      const badge = element("span", null, "game-result");
+      heading.append(" ", badge);
+      game.lineup.forEach((name, row) => {
+        const line = body.insertRow();
+        const playerCell = element("th");
+        playerCell.scope = "row";
+        const player = element("input", null, "name-input");
+        player.value = displayName(name);
+        player.disabled = !sheet.team;
+        player.autocomplete = "off";
+        player.setAttribute("list", "lineup-options");
+        player.setAttribute("aria-label", "Player " + (row + 1) + " name");
+        function commitPlayer() {
+          const next = resolvePlayer(player.value);
+          if ((!next && (game.highs[row].length || game.result?.row === row)) ||
+              (next && game.lineup.some((other, slot) => slot !== row && nameKey(other) === nameKey(next)))) {
+            player.value = displayName(game.lineup[row]);
+            notify(next ? "Choose a different player for this row." : "This row has a recorded high score or checkout.");
+            return;
+          }
+          if (next && !lineupNames().includes(next)) sheet.custom.push(next);
+          game.lineup[row] = next;
+          player.value = displayName(next);
+          refreshLists();
+          refresh501();
+          save();
+        }
+        player.addEventListener("change", commitPlayer);
+        player.addEventListener("keydown", event => {
+          if (event.key !== "Enter") return;
+          event.preventDefault();
+          commitPlayer();
+        });
+        playerCell.append(player);
+        addPlayerPicker(player);
+        line.append(playerCell);
+        const highs = line.insertCell();
+        const scoreField = element("div", null, "high-score-field");
+        const marks = element("div", null, "high-score-marks");
+        marks.setAttribute("aria-hidden", "true");
+        const input = element("input", null, "high-scores");
+        function renderHighScores() {
+          const scores = game.highs[row];
+          input.value = scores.join(", ");
+          marks.replaceChildren();
+          scores.forEach((score, index) => {
+            if (index) marks.append(", ");
+            marks.append(element("mark", score));
+          });
+          marks.hidden = false;
+          marks.scrollLeft = input.scrollLeft;
+        }
+        renderHighScores();
+        input.autocomplete = "off";
+        input.setAttribute("aria-label", "Player " + (row + 1) + " high scores, separated by commas");
+        input.title = "Separate multiple high scores with commas";
+        input.addEventListener("input", () => {
+          input.removeAttribute("aria-invalid");
+          marks.hidden = input.value !== game.highs[row].join(", ");
+          marks.scrollLeft = input.scrollLeft;
+        });
+        input.addEventListener("scroll", () => { marks.scrollLeft = input.scrollLeft; });
+        input.addEventListener("change", () => {
+          const value = input.value.trim();
+          const scores = value ? value.split(",").map(part => part.trim()) : [];
+          if (scores.some(score => !/^\d{2,3}$/.test(score) || Number(score) < highScore || Number(score) > 180)) {
+            input.setAttribute("aria-invalid", "true");
+            notify("Enter high scores from 95 to 180, separated by commas.");
+            return;
+          }
+          game.highs[row] = scores.map(Number);
+          renderHighScores();
+          input.removeAttribute("aria-invalid");
+          byId("team").disabled = !roster.length || hasSheetPlay();
+          notify();
+          save();
+        });
+        input.addEventListener("keydown", event => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            input.dispatchEvent(new Event("change"));
+          } else if (event.key === "Escape") {
+            event.preventDefault();
+            renderHighScores();
+            input.removeAttribute("aria-invalid");
+            notify();
+          }
+        });
+        scoreField.append(marks, input);
+        highs.append(scoreField);
+        line.append(checkoutCell(game, row, {
+          enabled: () => Boolean(sheet.team && game.lineup[row]) && game.result?.type !== "loss",
+          set: changeResult,
+          notify
+        }));
+      });
+      resultButton.addEventListener("click", () => changeResult(game.result ? null : { type: "loss" }));
+      actions.append(resultButton);
+      section.append(heading, table, actions, status);
+      if (root.children[index]) root.children[index].replaceWith(section);
+      else root.append(section);
+      refresh501();
+      return status;
+    }
+
+    function renderGames() {
+      sheet.games501.forEach((_, index) => render501(index));
+      sheet.games.forEach((_, index) => renderGame(index));
+      renderTotals();
+    }
+
+    function refreshNextToolbar(gameIndex) {
+      const nextIndex = gameIndex + 1;
+      if (sheet.games[nextIndex]) renderToolbar(nextIndex, analyze(sheet.games[nextIndex]));
+    }
+
+    function updateScores(gameIndex, keepInputs = false) {
+      byId("team").disabled = !roster.length || hasSheetPlay();
+      renderGame(gameIndex, true, keepInputs);
+      refreshNextToolbar(gameIndex);
+      renderTotals();
+    }
+
+    for (const [id, field] of [["match-date", "date"], ["team", "team"], ["opponent", "opponent"], ["msp", "msp"]]) {
+      byId(id).addEventListener("change", event => {
+        if (field === "opponent" && sheet.opponent !== event.target.value) sheet.msp = "";
+        if (field === "team" && sheet.team !== event.target.value) sheet.rosterOptOuts = [];
+        sheet[field] = event.target.value;
+        save();
+        if (field === "team" || field === "opponent") renderSetup();
+        if (field === "team") renderGames();
+      });
+    }
+    byId("spare-form").addEventListener("submit", event => {
+      event.preventDefault();
+      const input = byId("spare-name");
+      const typed = cleanName(input.value);
+      if (!typed || !sheet.team) return;
+      const matches = values => values.find(name => nameKey(name) === nameKey(typed));
+      const regular = matches(rosterByTeam.get(sheet.team) ?? []);
+      const existing = matches(sheet.spares);
+      if (regular || existing) {
+        byId("spares").textContent = regular ? regular + " is already on your team." :
+          existing + " is already a spare on this sheet.";
+        input.select();
+        return;
+      }
+      const custom = matches(sheet.custom);
+      const away = matches(roster.filter(team => team.name !== sheet.team).flatMap(team => team.players));
+      sheet.spares.push(custom ?? away ?? typed);
+      if (custom) {
+        sheet.custom = sheet.custom.filter(name => name !== custom);
+        sheet.rosterOptOuts = sheet.rosterOptOuts.filter(name => name !== nameKey(custom));
+      }
+      input.value = "";
+      refreshLists();
+      renderGames();
+      save();
+      input.focus();
+    });
+
+    function usePreviousOrder(gameIndex, sortByAverage) {
+      const prior = sheet.games[gameIndex - 1];
+      const totals = analyze(prior).totals;
+      const order = prior.lineup.map((name, index) => ({ name, ...totals[index] }));
+      if (sortByAverage) order.sort((a, b) => b.points * a.shots - a.points * b.shots);
+      sheet.games[gameIndex].lineup = order.map(player => player.name);
+      save();
+      renderGame(gameIndex);
+      refreshNextToolbar(gameIndex);
+    }
+
+    function undoScore(gameIndex) {
+      const game = sheet.games[gameIndex];
+      const change = game.history.pop();
+      if (!change) return;
+      game.visits[change.index] = change.prior;
+      while (game.visits.length && game.visits.at(-1) == null) game.visits.pop();
+      save();
+      updateScores(gameIndex);
+    }
+    byId("new-sheet").addEventListener("click", () => {
+      byId("reset-options").hidden = false;
+      byId("reset-cancel").focus();
+    });
+    byId("reset-cancel").addEventListener("click", () => {
+      byId("reset-options").hidden = true;
+      byId("new-sheet").focus();
+    });
+    byId("reset-confirm").addEventListener("click", () => {
+      sheet = newSheet();
+      document.querySelectorAll(".sheet details").forEach(section => {
+        section.open = section.id === "games-501";
+      });
+      byId("reset-options").hidden = true;
+      byId("spare-name").value = "";
+      save();
+      renderSetup();
+      renderGames();
+      byId("team").focus();
+    });
+
+    function reviewData() {
+      const issues = [];
+      const games = [];
+      const highs = [];
+      const finishes = [];
+      const addIssue = (text, target) => issues.push({ text, target });
+      for (const [field, label, id] of [
+        ["date", "match date", "match-date"], ["team", "team", "team"],
+        ["opponent", "opponent", "opponent"], ["msp", "Most Sportsmanlike Player", "msp"]
+      ]) {
+        if (!sheet[field]?.trim()) addIssue("Enter the " + label + ".", { id });
+      }
+      if (sheet.team && sheet.team === sheet.opponent) {
+        addIssue("Choose a different opposing team.", { id: "opponent" });
+      }
+      for (const [type, collection] of [["501", sheet.games501], ["1001", sheet.games]]) {
+        collection.forEach((game, index) => {
+          const label = type + " #" + (index + 1);
+          const target = { type, index };
+          const names = game.lineup.filter(name => name.trim());
+          const expected = type === "501" ? 2 : playerCount;
+          if (names.length !== expected) addIssue(label + " needs " + expected + " player names.", target);
+          if (new Set(names.map(nameKey)).size !== names.length) {
+            addIssue(label + " has a player listed twice.", target);
+          }
+          const result = game.result;
+          if (!["win", "loss"].includes(result?.type)) {
+            addIssue("Record the win or loss for " + label + ".", target);
+          }
+          const entry = { type, label, result };
+          games.push(entry);
+          if (result?.type === "win") {
+            const parts = /^(\d{1,3})x(\d{1,2})$/.exec(result.checkout ?? "");
+            const points = Number(parts?.[1]);
+            const double = Number(parts?.[2]);
+            if (!game.lineup[result.row] || !parts || points < 2 || points > 170 ||
+                (double !== 25 && (double < 1 || double > 20)) || points < double * 2) {
+              addIssue("Check the winning player and double-out for " + label + ".", target);
+            } else {
+              finishes.push({ ...entry, player: game.lineup[result.row], checkout: result.checkout });
+            }
+          }
+          if (type === "501") {
+            game.highs.forEach((scores, row) => {
+              if (scores.some(score => !Number.isInteger(score) || score < highScore || score > 180)) {
+                addIssue("Check the high scores for " + label + ".", target);
+              }
+              if (scores.length) highs.push({ ...entry, player: game.lineup[row], scores });
+            });
+          } else {
+            const analysis = analyze(game);
+            if (game.visits.some((score, position) => score != null &&
+                (!Number.isInteger(score) || score < 0 || score > 180 || analysis.recorded[position] == null))) {
+              addIssue("Check the visits outside the recorded totals for " + label + ".", target);
+            }
+            game.lineup.forEach((player, row) => {
+              const scores = game.visits.filter((score, position) =>
+                position % playerCount === row && analysis.recorded[position] != null && score >= highScore);
+              if (scores.length) highs.push({ ...entry, player, scores });
+            });
+          }
+        });
+      }
+      const totals = nightTotals();
+      const teamTotal = totals.reduce((total, [, player]) => ({
+        shots: total.shots + player.shots, points: total.points + player.points
+      }), blankTotals());
+      const lineup = new Set([...sheet.games501, ...sheet.games].flatMap(game => game.lineup).map(nameKey));
+      const known = new Set([...(rosterByTeam.get(sheet.team) ?? []), ...sheet.spares].map(nameKey));
+      const newPlayers = sheet.custom.filter(name => lineup.has(nameKey(name)) && !known.has(nameKey(name)))
+        .map(name => ({ name, addToRoster: !sheet.rosterOptOuts.includes(nameKey(name)) }));
+      return { issues, games, highs, finishes, totals, teamTotal, spares: sheet.spares, newPlayers };
+    }
+
+    function returnToSheet(target) {
+      byId("review-page").hidden = true;
+      byId("scoring-page").hidden = false;
+      if (!target) {
+        byId("open-review").focus();
+        return;
+      }
+      let input = target.input;
+      if (target.id) input = byId(target.id);
+      if (target.type) {
+        const section = target.type === "501"
+          ? byId("grids-501").children[target.index] : gameSections[target.index];
+        if (target.type === "501") byId("games-501").open = true;
+        else section.open = true;
+        input ??= section.querySelector('input[aria-invalid="true"], input:not(:disabled), button:not(:disabled), summary');
+      }
+      for (let parent = input?.parentElement; parent; parent = parent.parentElement) {
+        if (parent.tagName === "DETAILS") parent.open = true;
+      }
+      input?.focus();
+      input?.scrollIntoView({ block: "center" });
+    }
+
+    function editLink(text, target) {
+      const button = element("button", text);
+      button.type = "button";
+      button.addEventListener("click", () => returnToSheet(target));
+      return button;
+    }
+
+    function renderReview() {
+      const data = reviewData();
+      for (const input of byId("scoring-page").querySelectorAll('[aria-invalid="true"]')) {
+        data.issues.push({
+          text: "Correct " + (input.getAttribute("aria-label") ?? "the highlighted field") + ".",
+          target: { input }
+        });
+      }
+      const fields = [
+        ["Date", sheet.date], ["Team", sheet.team], ["Opponent", sheet.opponent],
+        ["MSP", sheet.msp]
+      ];
+      byId("review-meta").replaceChildren(...fields.map(([label, value]) => {
+        const group = element("div");
+        group.append(element("dt", label), element("dd", value || "—"));
+        return group;
+      }));
+      byId("review-issue-list").hidden = !data.issues.length;
+      byId("review-complete").hidden = Boolean(data.issues.length);
+      byId("review-issue-list").replaceChildren(...data.issues.map(issue => {
+        const line = element("li");
+        line.append(editLink(issue.text, issue.target));
+        return line;
+      }));
+      const counts = type => {
+        const games = type ? data.games.filter(game => game.type === type) : data.games;
+        const wins = games.filter(game => game.result?.type === "win").length;
+        const losses = games.filter(game => game.result?.type === "loss").length;
+        return [wins, losses, games.length - wins - losses];
+      };
+      const resultRow = (label, values) => {
+        const row = element("tr");
+        const heading = element("th", label);
+        heading.scope = "row";
+        row.append(heading, ...values.map(value => element("td", value)));
+        return row;
+      };
+      byId("review-results").replaceChildren(...["501", "1001"].map(type => resultRow(type, counts(type))));
+      byId("review-overall").replaceChildren(resultRow("Overall", counts()));
+      byId("review-averages").replaceChildren(...data.totals.map(([name, totals]) =>
+        resultRow(displayName(name), [totals.shots, totals.points, average(totals)])));
+      byId("review-team-average").replaceChildren(resultRow("Team",
+        [data.teamTotal.shots, data.teamTotal.points, average(data.teamTotal)]));
+      byId("review-highs").replaceChildren(...(data.highs.length ? data.highs.flatMap(entry =>
+        entry.scores.map(score => {
+          const row = element("li");
+          row.append(element("mark", score, "review-high"),
+            " - " + displayName(entry.player) + " (" + entry.label + ")");
+          return row;
+        })) : [element("li", "No high scores recorded.")]));
+      byId("review-finishes").replaceChildren(...(data.finishes.length ? data.finishes.map(entry =>
+        element("li", displayName(entry.player) + " - " + entry.checkout.replace("x", " x ") +
+          (isLarry(entry.result) ? " — Larry" : "") + " (" + entry.label + ")"))
+        : [element("li", "No finishes recorded.")]));
+      byId("review-spares").replaceChildren(...(data.spares.length
+        ? data.spares.map(name => element("li", name)) : [element("li", "None")]));
+      byId("review-new-players").replaceChildren(...(data.newPlayers.length ? data.newPlayers.map(player => {
+        const line = element("li", player.name);
+        const choice = element("input");
+        choice.type = "checkbox";
+        choice.checked = player.addToRoster;
+        choice.setAttribute("aria-label", "Add " + player.name + " to team roster");
+        choice.addEventListener("change", () => {
+          const key = nameKey(player.name);
+          if (choice.checked) sheet.rosterOptOuts = sheet.rosterOptOuts.filter(name => name !== key);
+          else sheet.rosterOptOuts.push(key);
+          save();
+        });
+        const label = element("label", null, "review-roster-choice");
+        label.append(choice, "Add to team roster");
+        line.append(label);
+        return line;
+      }) : [element("li", "None")]));
+      byId("submission-status").textContent = "Online submission is awaiting the league website setup. " +
+        (storageProblem ? "Local saving is unavailable on this browser." : "Your scores are saved on this device.");
+    }
+
+    byId("open-review").addEventListener("click", () => {
+      // Include the final match-detail edit when moving into review.
+      sheet.date = byId("match-date").value;
+      sheet.msp = cleanName(byId("msp").value);
+      save();
+      renderReview();
+      byId("scoring-page").hidden = true;
+      byId("review-page").hidden = false;
+      byId("review-heading").focus();
+      byId("review-heading").scrollIntoView({ block: "start" });
+    });
+    byId("back-to-sheet").addEventListener("click", () => returnToSheet());
+
+    function setRoster(data) {
+      const teams = data?.teams;
+      const isName = value => typeof value === "string" && Boolean(value.trim());
+      if (!Array.isArray(teams) || !teams.length || !teams.every(team =>
+        isName(team?.name) && Array.isArray(team.players) && team.players.every(isName)) ||
+        new Set(teams.map(team => nameKey(team.name))).size !== teams.length) {
+        throw new Error("Invalid roster.");
+      }
+      roster = teams;
+      rosterByTeam = new Map(teams.map(team => [team.name, team.players]));
+      renderSetup();
+      renderGames();
+    }
+
+    async function loadRoster() {
+      const status = byId("roster-status");
+      if (location.protocol === "file:") {
+        status.textContent = "Open Start-Scoresheet.cmd to start the local scoresheet and load the league roster.";
+      } else {
+        try {
+          const response = await fetch(rosterUrl, { cache: "no-store" });
+          if (!response.ok) throw new Error("Roster unavailable.");
+          setRoster(await response.json());
+          return;
+        } catch {
+          status.textContent = "The league roster could not load. Reload to try again.";
+        }
+      }
+      status.hidden = false;
+    }
+
+    const nightMode = byId("night-mode");
+    nightMode.checked = document.documentElement.dataset.theme === "dark";
+    nightMode.addEventListener("change", () => {
+      const enabled = nightMode.checked;
+      document.documentElement.dataset.theme = enabled ? "dark" : "light";
+      try {
+        localStorage.setItem("gmdl-night-mode", String(enabled));
+      } catch {
+        // Keep the selected theme active for this session.
+      }
+    });
+
+    addPlayerPicker(byId("spare-name"));
+    addPlayerPicker(byId("msp"));
+    renderSetup();
+    setupGames();
+    renderGames();
+    save();
+    loadRoster();
+  </script>
+</body>
+</html>
