@@ -136,9 +136,9 @@
     .totals th:first-child { text-align: left; }
     .night { border-top: 1px solid var(--line); padding-top: 12px; margin-top: 24px; }
     .night label { max-width: 250px; margin-top: 8px; }
-    .night-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }
-    .night-actions[hidden] { display: none; }
-    .night-actions span { font-size: .83rem; }
+    .sheet-actions, .reset-options { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    .sheet-actions { margin-top: 12px; }
+    .reset-options span { font-size: .83rem; }
     .secondary { color: var(--muted); }
     .player-picker { display: none; }
     [hidden] { display: none !important; }
@@ -157,7 +157,8 @@
     .review-table th, .review-table td { padding: 5px; font-size: .85rem; overflow-wrap: anywhere; }
     .review-table th[scope="row"] { text-align: left; font-weight: 550; }
     .review-table tfoot { background: var(--soft); font-weight: 700; }
-    .review-issues ul { margin: 0; border-left: 3px solid var(--error); padding: 1px 0 1px 12px; list-style: none; }
+    .review-issues h3 { width: fit-content; padding: 3px 7px; border-radius: 3px; background: var(--review-alert); color: white; }
+    .review-issues ul { margin: 0; border-left: 3px solid var(--review-alert); padding: 1px 0 1px 12px; list-style: none; }
     .review-issues li + li { margin-top: 7px; }
     .review-issues button { text-align: left; font-weight: 500; }
     .review-submit { border-top: 1px solid var(--line); margin-top: 20px; padding-top: 12px; }
@@ -200,6 +201,14 @@
       </div>
     </header>
     <div id="scoring-page">
+    <div class="sheet-actions">
+      <button id="new-sheet" class="secondary" type="button">New Scoresheet</button>
+      <div id="reset-options" class="reset-options" hidden>
+        <span>Replace this sheet and its saved scores?</span>
+        <button id="reset-confirm" type="button">Replace sheet</button>
+        <button id="reset-cancel" type="button">Cancel</button>
+      </div>
+    </div>
     <p id="roster-status" class="roster-status" role="status" hidden></p>
     <section class="match" aria-label="Match setup">
       <label>Date<input id="match-date" type="date"></label>
@@ -253,21 +262,15 @@
       <label>Most Sportsmanlike Player (MSP)<input id="msp" list="msp-options" autocomplete="off"></label>
       <datalist id="msp-options"></datalist>
     </details>
-    <button id="new-sheet" class="secondary" type="button">New scoresheet</button>
     <div class="review-navigation">
       <button id="open-review" class="primary" type="button">Review and Submit</button>
-    </div>
-    <div id="reset-options" class="night-actions" hidden>
-      <span>Replace this sheet and its saved scores?</span>
-      <button id="reset-confirm" type="button">Replace sheet</button>
-      <button id="reset-cancel" type="button">Cancel</button>
     </div>
     </div>
     <section id="review-page" class="review-page" aria-labelledby="review-heading" hidden>
       <button id="back-to-sheet" type="button">Back to scoresheet</button>
       <h2 id="review-heading" tabindex="-1">Review and Submit</h2>
       <section class="review-issues" aria-labelledby="review-issues-heading">
-        <h3 id="review-issues-heading">Needs attention</h3>
+        <h3 id="review-issues-heading">Needs attention:</h3>
         <ul id="review-issue-list"></ul>
         <p id="review-complete" role="status" hidden>All required match details and game results are filled in.</p>
       </section>
