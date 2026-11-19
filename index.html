@@ -126,18 +126,18 @@
     .row-checkout.larry { --checkout-highlight: var(--larry-highlight); }
     .row-checkout.win, .row-checkout.win:hover:enabled { background: var(--checkout-highlight); color: var(--highlight-ink); }
     .checkout-dialog {
-      width: min(400px, calc(100% - 24px)); padding: 16px; overflow-wrap: anywhere;
-      border: 1px solid var(--line); border-radius: 5px;
-      background: var(--paper); color: var(--ink);
+      position: fixed; inset: 0 auto auto 0; margin: 0; width: 300px; padding: 12px;
+      overflow: auto; overflow-wrap: anywhere; border: 1px solid var(--line); border-radius: 5px;
+      background: var(--paper); color: var(--ink); box-shadow: 0 6px 20px #0005;
     }
-    .checkout-dialog::backdrop { background: #0009; }
-    .checkout-dialog h2 { font-size: 1.15rem; }
-    .checkout-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+    .checkout-dialog::backdrop { background: #0004; }
+    .checkout-dialog h2 { font-size: 1rem; }
+    .checkout-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
     .checkout-fields input { min-height: 38px; }
     .checkout-fields input[aria-invalid="true"] { border-color: var(--error); }
     .checkout-error { color: var(--error); font-size: .85rem; margin: 8px 0 0; }
     .checkout-error:empty { display: none; }
-    .checkout-actions { display: flex; flex-wrap: wrap; justify-content: end; gap: 8px; margin-top: 14px; }
+    .checkout-actions { display: flex; flex-wrap: wrap; justify-content: end; gap: 8px; margin-top: 10px; }
     .result-actions { display: flex; gap: 6px; margin-top: 8px; }
     .result-actions [hidden] { display: none; }
     .message { min-height: 1.2em; margin: 8px 0 14px; color: var(--muted); font-size: .85rem; }
@@ -843,21 +843,48 @@
         pendingCheckout = { row, set, button };
         button.focus({ preventScroll: true });
         checkoutDialog.showModal();
+        positionCheckoutDialog();
         checkoutPoints.select();
       });
       cell.append(button);
       return cell;
     }
 
+    function positionCheckoutDialog() {
+      if (!checkoutDialog.open || !pendingCheckout) return;
+      const viewport = window.visualViewport;
+      const margin = 12;
+      const gap = 6;
+      const left = (viewport?.offsetLeft ?? 0) + margin;
+      const top = (viewport?.offsetTop ?? 0) + margin;
+      const width = (viewport?.width ?? document.documentElement.clientWidth) - 2 * margin;
+      const height = (viewport?.height ?? document.documentElement.clientHeight) - 2 * margin;
+      checkoutDialog.style.maxWidth = Math.max(0, width) + "px";
+      checkoutDialog.style.maxHeight = Math.max(0, height) + "px";
+
+      const anchor = pendingCheckout.button.getBoundingClientRect();
+      const popup = checkoutDialog.getBoundingClientRect();
+      const right = left + width;
+      const bottom = top + height;
+      const below = anchor.bottom + gap;
+      const above = anchor.top - gap;
+      const preferredTop = below + popup.height <= bottom || bottom - below >= above - top
+        ? below : above - popup.height;
+      checkoutDialog.style.left = Math.max(left, Math.min(anchor.right - popup.width, right - popup.width)) + "px";
+      checkoutDialog.style.top = Math.max(top, Math.min(preferredTop, bottom - popup.height)) + "px";
+    }
+
     function clearCheckoutError() {
       byId("checkout-error").textContent = "";
       checkoutPoints.removeAttribute("aria-invalid");
       checkoutDouble.removeAttribute("aria-invalid");
+      positionCheckoutDialog();
     }
 
     function showCheckoutError(input, error) {
       input.setAttribute("aria-invalid", "true");
       byId("checkout-error").textContent = error;
+      positionCheckoutDialog();
       input.focus();
     }
 
@@ -875,6 +902,10 @@
     checkoutDialog.addEventListener("close", () => {
       if (!checkoutDialog.open) pendingCheckout = null;
     });
+    window.addEventListener("resize", positionCheckoutDialog);
+    window.addEventListener("scroll", positionCheckoutDialog, { capture: true, passive: true });
+    window.visualViewport?.addEventListener("resize", positionCheckoutDialog);
+    window.visualViewport?.addEventListener("scroll", positionCheckoutDialog);
     for (const input of [checkoutPoints, checkoutDouble]) input.addEventListener("input", clearCheckoutError);
     checkoutPoints.addEventListener("keydown", event => {
       if (event.key !== "Enter" || event.isComposing) return;
