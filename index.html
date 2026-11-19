@@ -339,8 +339,8 @@
     const cutoff = 130;
     const highScore = 95;
     const average = ({ points, shots }) => shots ? (points / shots).toFixed(2) : "—";
-    const nameKey = name => name.trim().toLocaleLowerCase("en-CA");
     const cleanName = name => name.trim().replace(/\s+/g, " ");
+    const nameKey = name => cleanName(name).normalize("NFC").toLocaleLowerCase("en-CA");
     const blankTotals = () => ({ shots: 0, points: 0 });
 
     function new501Games() {
@@ -416,8 +416,20 @@
     const hasPlay = game => hasScores(game) || Boolean(game.result);
     const hasPlay501 = game => Boolean(game.result) || game.highs.some(scores => scores.length);
     const hasSheetPlay = () => sheet.games.some(hasPlay) || sheet.games501.some(hasPlay501);
-    const ready = game => game.lineup.every(Boolean) &&
-      new Set(game.lineup.map(nameKey)).size === playerCount;
+    const duplicatePlayerMessage = "A player can appear only once per game. Choose a different player.";
+    const lineupConflict = (game, name, row) => {
+      const key = nameKey(name);
+      return key ? game.lineup.findIndex((other, index) => index !== row && nameKey(other) === key) : -1;
+    };
+    const duplicateLineupRow = game => game.lineup.findIndex((name, row) => {
+      const other = lineupConflict(game, name, row);
+      return other >= 0 && other < row;
+    });
+    const ready = game => game.lineup.length === playerCount &&
+      game.lineup.every(name => nameKey(name)) && duplicateLineupRow(game) < 0;
+    // Let a scorekeeper repair a duplicate on an older sheet without clearing recorded visits.
+    const canEditLineup = (game, row) => Boolean(sheet.team) &&
+      (!hasPlay(game) || lineupConflict(game, game.lineup[row], row) >= 0);
     const canRecordResult = game => Boolean(sheet.team) && ready(game);
 
     function isLarry(result) {
@@ -597,13 +609,14 @@
         input.disabled = !canRecordResult(game) || game.result?.type === "loss";
       }
       const grid = gamePart(gameIndex, "score-grid");
+      const hasDuplicate = duplicateLineupRow(game) >= 0;
       for (const input of grid.querySelectorAll("input[data-index]")) {
         const index = Number(input.dataset.index);
         const score = game.visits[index];
         const recorded = analysis.recorded[index] != null;
         const next = index === analysis.next && ready(game) && Boolean(sheet.team);
         const cell = input.parentElement;
-        input.disabled = !next && score == null;
+        input.disabled = hasDuplicate || (!next && score == null);
         input.tabIndex = next ? 0 : -1;
         cell.classList.toggle("next", next);
         cell.classList.toggle("high", recorded && score >= highScore);
@@ -621,7 +634,7 @@
         }
       }
       [...grid.tBodies[0].rows].forEach((row, index) => {
-        setPlayerDisabled(row.querySelector(".name-input"), !sheet.team || hasPlay(game));
+        setPlayerDisabled(row.querySelector(".name-input"), !canEditLineup(game, index));
         const totals = analysis.totals[index];
         const [shots, points, avg] = row.querySelectorAll("td.stat");
         shots.textContent = totals.shots;
@@ -629,6 +642,7 @@
         avg.textContent = average(totals);
       });
       if (!sheet.team) message(gameIndex, "Choose your team to enter a lineup.");
+      else if (hasDuplicate) message(gameIndex, duplicatePlayerMessage, true);
       else if (!ready(game)) message(gameIndex, "Enter four different players in throwing order.");
       else if (game.result?.type === "win") {
         message(gameIndex, "Win recorded for " + displayName(game.lineup[game.result.row]) +
@@ -642,12 +656,12 @@
 
     function saveLineup(gameIndex, input, row) {
       const game = sheet.games[gameIndex];
-      if (hasPlay(game)) return;
+      if (!canEditLineup(game, row)) return false;
       const name = resolvePlayer(input.value);
-      if (name && game.lineup.some((other, index) => index !== row && nameKey(other) === nameKey(name))) {
+      if ((!name && hasPlay(game)) || lineupConflict(game, name, row) >= 0) {
         input.value = displayName(game.lineup[row]);
-        message(gameIndex, "A player can appear only once in a 1001 lineup.", true);
-        return;
+        message(gameIndex, name ? duplicatePlayerMessage : "This row has recorded play. Choose a different player.", true);
+        return false;
       }
       if (name && !lineupNames().includes(name)) sheet.custom.push(name);
       game.lineup[row] = name;
@@ -656,7 +670,9 @@
       refreshLists();
       refreshGameState(gameIndex, analyze(game));
       refreshNextToolbar(gameIndex);
+      renderTotals();
       save();
+      return true;
     }
 
     function lineupCell(gameIndex, game, row) {
@@ -669,12 +685,12 @@
       input.setAttribute("aria-label", "Player " + (row + 1) + " name");
       input.setAttribute("list", "lineup-options");
       input.autocomplete = "off";
-      input.disabled = !sheet.team || hasPlay(game);
+      input.disabled = !canEditLineup(game, row);
       input.addEventListener("change", () => saveLineup(gameIndex, input, row));
       input.addEventListener("keydown", event => {
         if (event.key !== "Enter") return;
         event.preventDefault();
-        if (input.value !== displayName(game.lineup[row])) saveLineup(gameIndex, input, row);
+        if (input.value !== displayName(game.lineup[row]) && !saveLineup(gameIndex, input, row)) return;
         if (row < playerCount - 1) byId("player-" + gameIndex + "-" + (row + 1)).focus();
         else if (ready(game)) focusScore(gameIndex, analyze(game).next);
       });
@@ -691,6 +707,7 @@
     }
 
     function recordScore(gameIndex, input, index) {
+      if (input.disabled) return;
       const value = input.value.trim();
       const score = Number(value);
       if (!/^\d{1,3}$/.test(value) || score > 180) {
@@ -944,7 +961,11 @@
       status.tabIndex = -1;
       status.setAttribute("role", "status");
 
-      function notify(error) {
+      function canScore(row) {
+        return Boolean(sheet.team && game.lineup[row]) && duplicateLineupRow(game) < 0;
+      }
+
+      function notify(error = duplicateLineupRow(game) >= 0 ? duplicatePlayerMessage : "") {
         status.classList.toggle("error", Boolean(error));
         if (error) status.textContent = error;
         else if (game.result?.type === "win") {
@@ -963,9 +984,9 @@
         const result = game.result;
         renderResultBadge(badge, result);
         resultButton.textContent = result ? "Clear result" : "Record loss";
-        resultButton.disabled = !sheet.team || !game.lineup.some(Boolean);
+        resultButton.disabled = !sheet.team || (!result && !game.lineup.some((_, row) => canScore(row)));
         [...body.rows].forEach((row, slot) => {
-          const enabled = Boolean(sheet.team && game.lineup[slot]);
+          const enabled = canScore(slot);
           row.querySelector(".high-scores").disabled = !enabled;
           for (const input of row.querySelectorAll("input[data-checkout]")) {
             input.disabled = !enabled || result?.type === "loss";
@@ -989,9 +1010,9 @@
         function commitPlayer() {
           const next = resolvePlayer(player.value);
           if ((!next && (game.highs[row].length || game.result?.row === row)) ||
-              (next && game.lineup.some((other, slot) => slot !== row && nameKey(other) === nameKey(next)))) {
+              lineupConflict(game, next, row) >= 0) {
             player.value = displayName(game.lineup[row]);
-            notify(next ? "Choose a different player for this row." : "This row has a recorded high score or checkout.");
+            notify(next ? duplicatePlayerMessage : "This row has a recorded high score or checkout.");
             return;
           }
           if (next && !lineupNames().includes(next)) sheet.custom.push(next);
@@ -1065,7 +1086,7 @@
         scoreField.append(marks, input);
         highs.append(scoreField);
         line.append(checkoutCell(game, row, {
-          enabled: () => Boolean(sheet.team && game.lineup[row]) && game.result?.type !== "loss",
+          enabled: () => canScore(row) && game.result?.type !== "loss",
           set: changeResult,
           notify
         }));
@@ -1137,6 +1158,7 @@
 
     function usePreviousOrder(gameIndex, sortByAverage) {
       const prior = sheet.games[gameIndex - 1];
+      if (!sheet.team || !prior || !ready(prior) || hasPlay(sheet.games[gameIndex])) return;
       const totals = analyze(prior).totals;
       const order = prior.lineup.map((name, index) => ({ name, ...totals[index] }));
       if (sortByAverage) order.sort((a, b) => b.points * a.shots - a.points * b.shots);
@@ -1198,9 +1220,8 @@
           const names = game.lineup.filter(name => name.trim());
           const expected = type === "501" ? 2 : playerCount;
           if (names.length !== expected) addIssue(label + " needs " + expected + " player names.", target);
-          if (new Set(names.map(nameKey)).size !== names.length) {
-            addIssue(label + " has a player listed twice.", target);
-          }
+          const duplicateRow = duplicateLineupRow(game);
+          if (duplicateRow >= 0) addIssue(label + " has a player listed twice.", { ...target, row: duplicateRow });
           const result = game.result;
           if (!["win", "loss"].includes(result?.type)) {
             addIssue("Record the win or loss for " + label + ".", target);
@@ -1264,6 +1285,7 @@
           ? byId("grids-501").children[target.index] : gameSections[target.index];
         if (target.type === "501") byId("games-501").open = true;
         else section.open = true;
+        if (target.row != null) input ??= section.querySelectorAll(".name-input")[target.row];
         input ??= section.querySelector('input[aria-invalid="true"], input:not(:disabled), button:not(:disabled), summary');
       }
       for (let parent = input?.parentElement; parent; parent = parent.parentElement) {
