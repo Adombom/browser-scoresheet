@@ -137,6 +137,12 @@
     .checkout-fields input[aria-invalid="true"] { border-color: var(--error); }
     .checkout-error { color: var(--error); font-size: .85rem; margin: 8px 0 0; }
     .checkout-error:empty { display: none; }
+    .checkout-larry { margin-top: 10px; }
+    .checkout-larry-controls { display: flex; align-items: center; gap: 8px; }
+    .checkout-larry-controls label { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; }
+    .checkout-larry-controls input { width: 1rem; height: 1rem; margin: 0; accent-color: var(--primary); }
+    .checkout-larry-controls button { width: 28px; height: 28px; padding: 0; border-radius: 50%; }
+    .checkout-larry-help { margin: 4px 0 0; padding: 6px 8px; background: var(--soft); font-size: .8rem; }
     .checkout-actions { display: flex; flex-wrap: wrap; justify-content: end; gap: 8px; margin-top: 10px; }
     .result-actions { display: flex; gap: 6px; margin-top: 8px; }
     .result-actions [hidden] { display: none; }
@@ -347,6 +353,14 @@
           <input id="checkout-double" inputmode="numeric" enterkeyhint="done" autocomplete="off" aria-describedby="checkout-error">
         </label>
       </div>
+      <div id="checkout-larry-option" class="checkout-larry" hidden>
+        <div class="checkout-larry-controls">
+          <label><input id="checkout-larry" type="checkbox">Larry</label>
+          <button id="checkout-larry-info" type="button" aria-label="What is a Larry?"
+            aria-controls="checkout-larry-help" aria-expanded="false">i</button>
+        </div>
+        <p id="checkout-larry-help" class="checkout-larry-help" hidden>A Larry is a checkout from 5 remaining by hitting triple 1, then double 1.</p>
+      </div>
       <p id="checkout-error" class="checkout-error" role="alert"></p>
       <div class="checkout-actions">
         <button id="checkout-cancel" type="button">Cancel</button>
@@ -367,6 +381,7 @@
     const initialColumns = 8;
     const cutoff = 130;
     const highScore = 95;
+    const larryCheckout = "5x1";
     const average = ({ points, shots }) => shots ? (points / shots).toFixed(2) : "—";
     const cleanName = name => name.trim().replace(/\s+/g, " ");
     const nameKey = name => cleanName(name).normalize("NFC").toLocaleLowerCase("en-CA");
@@ -462,7 +477,7 @@
     const canRecordResult = game => Boolean(sheet.team) && ready(game);
 
     function isLarry(result) {
-      return result?.type === "win" && result.checkout === "3x1";
+      return result?.type === "win" && result.checkout === larryCheckout && result.larry === true;
     }
 
     function renderResultBadge(badge, result) {
@@ -811,6 +826,10 @@
     const checkoutDialog = byId("checkout-dialog");
     const checkoutPoints = byId("checkout-points");
     const checkoutDouble = byId("checkout-double");
+    const checkoutLarry = byId("checkout-larry");
+    const larryOption = byId("checkout-larry-option");
+    const larryInfo = byId("checkout-larry-info");
+    const larryHelp = byId("checkout-larry-help");
     let pendingCheckout;
 
     function refreshCheckoutButton(button, game, row, enabled) {
@@ -839,6 +858,9 @@
         byId("checkout-save").textContent = editing ? "Save checkout" : replacing ? "Change winner" : "Record win";
         checkoutPoints.value = points;
         checkoutDouble.value = double;
+        checkoutLarry.checked = editing && isLarry(game.result);
+        setLarryHelp(false);
+        refreshLarryOption();
         clearCheckoutError();
         pendingCheckout = { row, set, button };
         button.focus({ preventScroll: true });
@@ -874,6 +896,21 @@
       checkoutDialog.style.top = Math.max(top, Math.min(preferredTop, bottom - popup.height)) + "px";
     }
 
+    function setLarryHelp(open) {
+      larryHelp.hidden = !open;
+      larryInfo.setAttribute("aria-expanded", String(open));
+    }
+
+    function refreshLarryOption() {
+      const entered = [checkoutPoints, checkoutDouble]
+        .map(input => input.value.trim().replace(/^0+/, "")).join("x");
+      larryOption.hidden = entered !== larryCheckout;
+      if (larryOption.hidden) {
+        checkoutLarry.checked = false;
+        setLarryHelp(false);
+      }
+    }
+
     function clearCheckoutError() {
       byId("checkout-error").textContent = "";
       checkoutPoints.removeAttribute("aria-invalid");
@@ -906,7 +943,16 @@
     window.addEventListener("scroll", positionCheckoutDialog, { capture: true, passive: true });
     window.visualViewport?.addEventListener("resize", positionCheckoutDialog);
     window.visualViewport?.addEventListener("scroll", positionCheckoutDialog);
-    for (const input of [checkoutPoints, checkoutDouble]) input.addEventListener("input", clearCheckoutError);
+    larryInfo.addEventListener("click", () => {
+      setLarryHelp(larryHelp.hidden);
+      positionCheckoutDialog();
+    });
+    for (const input of [checkoutPoints, checkoutDouble]) {
+      input.addEventListener("input", () => {
+        refreshLarryOption();
+        clearCheckoutError();
+      });
+    }
     checkoutPoints.addEventListener("keydown", event => {
       if (event.key !== "Enter" || event.isComposing) return;
       event.preventDefault();
@@ -924,8 +970,11 @@
         return;
       }
       const { row, set } = pendingCheckout;
+      const checkout = points + "x" + double;
+      const result = { type: "win", row, checkout };
+      if (checkout === larryCheckout && checkoutLarry.checked) result.larry = true;
       checkoutDialog.close();
-      set({ type: "win", row, checkout: points + "x" + double });
+      set(result);
     });
 
     function renderGrid(gameIndex, game, analysis, keepInputs = false) {
