@@ -71,15 +71,26 @@
     .grid-501 th[scope="row"] { text-align: left; }
     .grid-501 th.checkout { width: 106px; }
     .grid-501 thead th:first-child { width: 200px; text-align: left; }
-    .high-score-field { position: relative; background: var(--field); border-radius: 3px; }
-    .grid-501 .high-scores, .high-score-marks { font-size: .82rem; line-height: 1.25; }
-    .grid-501 .high-scores { position: relative; background: transparent; }
-    .high-score-marks {
-      position: absolute; z-index: 1; inset: 1px; padding: 7px 8px; overflow: hidden;
-      white-space: pre; text-align: left; color: transparent; pointer-events: none;
+    .high-score-field {
+      display: flex; align-items: center; gap: 4px; height: 33px; padding: 2px 4px;
+      border: 1px solid var(--line); border-radius: 3px; background: var(--field); font-size: .82rem;
     }
-    .high-score-marks mark { background: var(--highlighter); color: var(--highlight-ink); }
-    .high-score-field:focus-within .high-score-marks { visibility: hidden; }
+    .high-score-strip {
+      display: flex; align-items: center; min-width: 0; overflow-x: auto; scrollbar-width: none;
+    }
+    .high-score-strip:empty { display: none; }
+    .high-score-strip::-webkit-scrollbar { display: none; }
+    .high-score-token { display: inline-flex; flex: none; align-items: center; }
+    .high-score-token:not(:last-child)::after { content: ","; margin: 0 4px 0 1px; color: var(--muted); }
+    .high-score-chip, .high-score-chip:hover:enabled {
+      min-width: 4ch; min-height: 25px; padding: 2px 5px; border: 0; border-radius: 999px;
+      background: var(--highlighter); color: var(--highlight-ink); font-size: inherit;
+    }
+    .high-score-input { padding: 2px 1px; border: 0; background: transparent; }
+    .high-score-entry { flex: 1 0 min(5ch, 100%); width: 0; }
+    .high-score-edit { width: 5ch; }
+    .high-score-chip:focus-visible, .high-score-input:focus-visible { outline-offset: -2px; }
+    .high-score-input[aria-invalid="true"] { box-shadow: inset 0 0 0 1px var(--error); }
     .game-result { margin-left: 8px; padding: 2px 6px; color: var(--muted); }
     .game-result.win { background: var(--highlighter); color: var(--highlight-ink); }
     .game-result.larry { background: var(--larry-highlight); }
@@ -202,6 +213,15 @@
       .match label:first-child { grid-column: span 2; width: min(100%, 180px); }
       .score-grid thead th:first-child { width: 145px; }
       .toolbar .undo { margin-left: 0; }
+    }
+    @media (max-width: 420px) {
+      .grid-501 thead th:first-child { width: 40%; }
+      .grid-501 th.checkout { width: 82px; }
+    }
+    @media (max-width: 360px) {
+      .grid-501 thead th:first-child { width: 38%; }
+      .grid-501 th.checkout { width: 66px; }
+      .high-score-entry { flex-basis: min(4.5ch, 100%); }
     }
   </style>
 </head>
@@ -1084,7 +1104,11 @@
         return Boolean(sheet.team && game.lineup[row]) && duplicateLineupRow(game) < 0;
       }
 
-      function notify(error = duplicateLineupRow(game) >= 0 ? duplicatePlayerMessage : "") {
+      const highScoreError = "Enter a high score from 95 to 180.";
+
+      function notify(error = "") {
+        if (!error && duplicateLineupRow(game) >= 0) error = duplicatePlayerMessage;
+        if (!error && section.querySelector('.high-score-input[aria-invalid="true"]')) error = highScoreError;
         status.classList.toggle("error", Boolean(error));
         if (error) status.textContent = error;
         else if (game.result?.type === "win") {
@@ -1108,7 +1132,9 @@
         resultButton.disabled = !sheet.team || (!result && !game.lineup.some((_, row) => canScore(row)));
         [...body.rows].forEach((row, slot) => {
           const enabled = canScore(slot);
-          row.querySelector(".high-scores").disabled = !enabled;
+          for (const field of row.querySelectorAll(".high-score-field input, .high-score-field button")) {
+            field.disabled = !enabled;
+          }
           refreshCheckoutButton(row.querySelector(".row-checkout"), game, slot, enabled);
         });
         notify();
@@ -1152,57 +1178,124 @@
         line.append(playerCell);
         const highs = line.insertCell();
         const scoreField = element("div", null, "high-score-field");
-        const marks = element("div", null, "high-score-marks");
-        marks.setAttribute("aria-hidden", "true");
-        const input = element("input", null, "high-scores");
-        function renderHighScores() {
-          const scores = game.highs[row];
-          input.value = scores.join(", ");
-          marks.replaceChildren();
-          scores.forEach((score, index) => {
-            if (index) marks.append(", ");
-            marks.append(element("mark", score));
+        const strip = element("div", null, "high-score-strip");
+        const scores = game.highs[row];
+        const entry = scoreInput("high-score-entry", "Add high score for player " + (row + 1));
+
+        function scoreInput(className, label) {
+          const input = element("input", null, "high-score-input " + className);
+          input.inputMode = "numeric";
+          input.enterKeyHint = "done";
+          input.autocomplete = "off";
+          input.setAttribute("aria-label", label);
+          input.addEventListener("input", () => {
+            input.removeAttribute("aria-invalid");
+            notify();
           });
-          marks.hidden = false;
-          marks.scrollLeft = input.scrollLeft;
+          return input;
         }
-        renderHighScores();
-        input.autocomplete = "off";
-        input.setAttribute("aria-label", "Player " + (row + 1) + " high scores, separated by commas");
-        input.title = "Separate multiple high scores with commas";
-        input.addEventListener("input", () => {
-          input.removeAttribute("aria-invalid");
-          marks.hidden = input.value !== game.highs[row].join(", ");
-          marks.scrollLeft = input.scrollLeft;
-        });
-        input.addEventListener("scroll", () => { marks.scrollLeft = input.scrollLeft; });
-        input.addEventListener("change", () => {
+
+        function readHighScore(input) {
           const value = input.value.trim();
-          const scores = value ? value.split(",").map(part => part.trim()) : [];
-          if (scores.some(score => !/^\d{2,3}$/.test(score) || Number(score) < highScore || Number(score) > 180)) {
+          const score = Number(value);
+          if (!/^\d{2,3}$/.test(value) || score < highScore || score > 180) {
             input.setAttribute("aria-invalid", "true");
-            notify("Enter high scores from 95 to 180, separated by commas.");
-            return;
+            notify(highScoreError);
+            return null;
           }
-          game.highs[row] = scores.map(Number);
-          renderHighScores();
-          input.removeAttribute("aria-invalid");
+          return score;
+        }
+
+        function saveHighScores() {
           byId("team").disabled = !roster.length || hasSheetPlay();
           notify();
           save();
-        });
-        input.addEventListener("keydown", event => {
-          if (event.key === "Enter") {
-            event.preventDefault();
-            input.dispatchEvent(new Event("change"));
-          } else if (event.key === "Escape") {
-            event.preventDefault();
-            renderHighScores();
-            input.removeAttribute("aria-invalid");
-            notify();
+        }
+
+        function handleScoreKeys(input, commit, cancel) {
+          input.addEventListener("keydown", event => {
+            if (event.isComposing) return;
+            if (event.key === "Enter") {
+              event.preventDefault();
+              commit(true);
+            } else if (event.key === "Escape") {
+              event.preventDefault();
+              cancel();
+            }
+          });
+          input.addEventListener("blur", () => commit(false));
+        }
+
+        function addScoreChip(score) {
+          const token = element("span", null, "high-score-token");
+          const chip = element("button", null, "high-score-chip");
+          chip.type = "button";
+          chip.disabled = !canScore(row);
+          function showScore(value) {
+            chip.textContent = value;
+            chip.setAttribute("aria-label", "Edit high score " + value + " for player " + (row + 1));
           }
+          showScore(score);
+          chip.addEventListener("click", () => {
+            const editor = scoreInput("high-score-edit", chip.getAttribute("aria-label"));
+            editor.value = chip.textContent;
+            chip.hidden = true;
+            token.append(editor);
+            editor.focus();
+            editor.select();
+            let editing = true;
+
+            function finishEdit(focusChip) {
+              editing = false;
+              editor.remove();
+              chip.hidden = false;
+              if (focusChip) chip.focus();
+            }
+
+            handleScoreKeys(editor, keepFocus => {
+              if (!editing || !canScore(row)) return;
+              const slot = [...strip.children].indexOf(token);
+              const value = editor.value.trim();
+              if (!value || /^0{1,3}$/.test(value)) {
+                editing = false;
+                scores.splice(slot, 1);
+                token.remove();
+                if (keepFocus) entry.focus();
+              } else {
+                const updated = readHighScore(editor);
+                if (updated == null) return;
+                scores[slot] = updated;
+                showScore(updated);
+                finishEdit(keepFocus);
+              }
+              saveHighScores();
+            }, () => {
+              finishEdit(true);
+              notify();
+            });
+          });
+          token.append(chip);
+          strip.append(token);
+        }
+
+        scores.forEach(addScoreChip);
+        entry.placeholder = "Score";
+        handleScoreKeys(entry, keepFocus => {
+          if (!entry.value.trim() || !canScore(row)) return;
+          const score = readHighScore(entry);
+          if (score == null) return;
+          scores.push(score);
+          addScoreChip(score);
+          entry.value = "";
+          entry.removeAttribute("aria-invalid");
+          if (keepFocus) strip.scrollLeft = strip.scrollWidth;
+          saveHighScores();
+        }, () => {
+          entry.value = "";
+          entry.removeAttribute("aria-invalid");
+          notify();
         });
-        scoreField.append(marks, input);
+        scoreField.append(strip, entry);
         highs.append(scoreField);
         line.append(checkoutCell(game, row, changeResult));
       });
