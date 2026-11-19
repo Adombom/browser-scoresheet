@@ -69,6 +69,7 @@
     .game-501 h2 { font-size: 1rem; margin-bottom: 5px; }
     .grid-501 th, .grid-501 td { padding: 4px; }
     .grid-501 th[scope="row"] { text-align: left; }
+    .grid-501 th.checkout { width: 106px; }
     .grid-501 thead th:first-child { width: 200px; text-align: left; }
     .high-score-field { position: relative; background: var(--field); border-radius: 3px; }
     .grid-501 .high-scores, .high-score-marks { font-size: .82rem; line-height: 1.25; }
@@ -97,6 +98,7 @@
     thead th { padding: 7px 3px; background: var(--soft); font-size: .72rem; }
     .score-grid thead th:first-child { width: 167px; text-align: left; padding-left: 8px; }
     .score-grid thead th.stat { width: 60px; }
+    .score-grid thead th.checkout { width: 112px; }
     .score-grid tbody th { padding: 5px; background: var(--paper); }
     .score-grid tr > :first-child { position: sticky; left: 0; z-index: 1; box-shadow: 1px 0 var(--line); }
     .name-input { font-size: .82rem; font-weight: 500; }
@@ -118,7 +120,8 @@
     .visit[title] { cursor: help; }
     td.stat { background: var(--stat-background); font-size: .86rem; }
     td.average { font-weight: 700; }
-    .row-checkout { display: block; margin-top: 3px; min-height: 32px; padding: 3px 10px; }
+    td.checkout { padding: 4px; }
+    .row-checkout { width: 100%; min-height: 32px; padding: 3px 6px; }
     .row-checkout.win { --checkout-highlight: var(--highlighter); }
     .row-checkout.larry { --checkout-highlight: var(--larry-highlight); }
     .row-checkout.win, .row-checkout.win:hover:enabled { background: var(--checkout-highlight); color: var(--highlight-ink); }
@@ -722,7 +725,6 @@
       });
       heading.append(input);
       addPlayerPicker(input);
-      heading.append(checkoutButton(game, row, result => setResult(gameIndex, result)));
       return heading;
     }
 
@@ -822,7 +824,8 @@
         : name ? "Record win for " + name : "Record win for player " + (row + 1));
     }
 
-    function checkoutButton(game, row, set) {
+    function checkoutCell(game, row, set) {
+      const cell = element("td", null, "checkout");
       const button = element("button", "Win", "row-checkout");
       button.type = "button";
       button.setAttribute("aria-haspopup", "dialog");
@@ -842,7 +845,8 @@
         checkoutDialog.showModal();
         checkoutPoints.select();
       });
-      return button;
+      cell.append(button);
+      return cell;
     }
 
     function clearCheckoutError() {
@@ -897,10 +901,10 @@
       const grid = gamePart(gameIndex, "score-grid");
       const columns = Math.max(initialColumns, Math.ceil(game.visits.length / playerCount),
         analysis.next == null ? 0 : Math.floor(analysis.next / playerCount) + 1);
-      grid.style.setProperty("--grid-width", (347 + columns * 68) + "px");
+      grid.style.setProperty("--grid-width", (457 + columns * 68) + "px");
       if (keepInputs && grid.tBodies[0]) {
         const header = grid.tHead.rows[0];
-        let existing = header.cells.length - 4;
+        let existing = header.cells.length - 5;
         const rows = [...grid.tBodies[0].rows];
         while (existing < columns) {
           const heading = element("th", "Shot " + (existing + 1));
@@ -915,8 +919,8 @@
       const head = element("thead");
       const header = element("tr");
       ["Name", ...Array.from({ length: columns }, (_, index) => "Shot " + (index + 1)),
-        "Total shots", "Total points", "Average"].forEach((label, index) => {
-        const heading = element("th", label, index > columns ? "stat" : null);
+        "Total shots", "Total points", "Average", "Double Out"].forEach((label, index) => {
+        const heading = element("th", label, label === "Double Out" ? "checkout" : index > columns ? "stat" : null);
         heading.scope = "col";
         header.append(heading);
       });
@@ -927,7 +931,8 @@
         line.append(lineupCell(gameIndex, game, row));
         for (let shot = 0; shot < columns; shot++) line.append(visitCell(gameIndex, game, row, shot));
         line.append(element("td", totals.shots, "stat"), element("td", totals.points, "stat"),
-          element("td", average(totals), "stat average"));
+          element("td", average(totals), "stat average"),
+          checkoutCell(game, row, result => setResult(gameIndex, result)));
         body.append(line);
       });
       grid.replaceChildren(head, body);
@@ -982,8 +987,8 @@
       const table = element("table", null, "grid-501");
       table.setAttribute("aria-labelledby", heading.id);
       const header = table.createTHead().insertRow();
-      for (const label of ["Player Name", "High Scores"]) {
-        const cell = element("th", label);
+      for (const label of ["Player Name", "High Scores", "Double Out"]) {
+        const cell = element("th", label, label === "Double Out" ? "checkout" : null);
         cell.scope = "col";
         header.append(cell);
       }
@@ -1064,7 +1069,6 @@
         });
         playerCell.append(player);
         addPlayerPicker(player);
-        playerCell.append(checkoutButton(game, row, changeResult));
         line.append(playerCell);
         const highs = line.insertCell();
         const scoreField = element("div", null, "high-score-field");
@@ -1120,6 +1124,7 @@
         });
         scoreField.append(marks, input);
         highs.append(scoreField);
+        line.append(checkoutCell(game, row, changeResult));
       });
       resultButton.addEventListener("click", () => changeResult(game.result ? null : { type: "loss" }));
       actions.append(resultButton);
