@@ -76,12 +76,11 @@
       border: 1px solid var(--line); border-radius: 3px; background: var(--field); font-size: .82rem;
     }
     .high-score-strip {
-      display: flex; align-items: center; min-width: 0; overflow-x: auto; scrollbar-width: none;
+      display: flex; align-items: center; gap: 4px; min-width: 0; overflow-x: auto; scrollbar-width: none;
     }
     .high-score-strip:empty { display: none; }
     .high-score-strip::-webkit-scrollbar { display: none; }
     .high-score-token { display: inline-flex; flex: none; align-items: center; }
-    .high-score-token:not(:last-child)::after { content: ","; margin: 0 4px 0 1px; color: var(--muted); }
     .high-score-chip, .high-score-chip:hover:enabled {
       min-width: 4ch; min-height: 25px; padding: 2px 5px; border: 0; border-radius: 999px;
       background: var(--highlighter); color: var(--highlight-ink); font-size: inherit;
