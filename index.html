@@ -246,6 +246,14 @@
       </div>
     </div>
     <p id="roster-status" class="roster-status" role="status" hidden></p>
+    <p id="launch-status" class="roster-status" role="status" hidden></p>
+    <section id="launch-choice" class="roster-status" aria-label="Saved scoresheet" hidden>
+      <p id="launch-match" role="status"></p>
+      <div class="reset-options">
+        <button id="launch-resume" type="button">Resume saved sheet</button>
+        <button id="launch-start" type="button">Replace with linked match</button>
+      </div>
+    </section>
     <section class="match" aria-label="Match setup">
       <label>Date<input id="match-date" type="date"></label>
       <label>Team<select id="team"></select></label>
@@ -427,6 +435,8 @@
 
     let storageProblem = false;
     let sheet = newSheet();
+    const defaultMatchDate = sheet.date;
+    let pendingLaunch;
     try {
       const saved = JSON.parse(localStorage.getItem(storageKey));
       if (saved?.games?.length === 5) {
@@ -1392,8 +1402,10 @@
       byId("reset-options").hidden = true;
       byId("new-sheet").focus();
     });
-    byId("reset-confirm").addEventListener("click", () => {
-      sheet = newSheet();
+    function startNewSheet(defaults = {}) {
+      sheet = { ...newSheet(), ...defaults };
+      pendingLaunch = null;
+      byId("launch-choice").hidden = true;
       document.querySelectorAll(".sheet details").forEach(section => {
         section.open = section.id === "games-501";
       });
@@ -1403,6 +1415,16 @@
       renderSetup();
       renderGames();
       byId("team").focus();
+    }
+
+    byId("reset-confirm").addEventListener("click", () => startNewSheet());
+    byId("launch-resume").addEventListener("click", () => {
+      pendingLaunch = null;
+      byId("launch-choice").hidden = true;
+      (byId("team").disabled ? byId("new-sheet") : byId("team")).focus();
+    });
+    byId("launch-start").addEventListener("click", () => {
+      if (pendingLaunch) startNewSheet(pendingLaunch);
     });
 
     function reviewData() {
@@ -1599,6 +1621,43 @@
     });
     byId("back-to-sheet").addEventListener("click", () => returnToSheet());
 
+    function applyLaunchParameters() {
+      const params = new URLSearchParams(location.search);
+      const defaults = {};
+      const issues = [];
+      for (const field of ["team", "opponent"]) {
+        const values = params.getAll(field);
+        if (!values.length) continue;
+        const match = values.length === 1 && roster.find(team => nameKey(team.name) === nameKey(values[0]));
+        if (match) defaults[field] = match.name;
+        else issues.push("The link doesn’t specify a single recognized " + field + ". You can choose one on the sheet.");
+      }
+      if (defaults.team && defaults.team === defaults.opponent) {
+        delete defaults.opponent;
+        issues.push("The link selects the same team and opponent. Choose a different opponent on the sheet.");
+      }
+      const status = byId("launch-status");
+      status.textContent = issues.join(" ");
+      status.hidden = !issues.length;
+
+      if (!Object.entries(defaults).some(([field, name]) => nameKey(sheet[field]) !== nameKey(name))) return;
+      const hasDraft = sheet.team || sheet.opponent || sheet.msp || sheet.spares.length ||
+        sheet.date !== defaultMatchDate || hasSheetPlay() ||
+        [...sheet.games501, ...sheet.games].some(game => game.lineup.some(Boolean));
+      if (!hasDraft) {
+        Object.assign(sheet, defaults);
+        save();
+        return;
+      }
+
+      pendingLaunch = defaults;
+      const description = defaults.team && defaults.opponent ? defaults.team + " vs. " + defaults.opponent
+        : defaults.team || ("opponent " + defaults.opponent);
+      byId("launch-match").textContent = "You have a saved scoresheet. Replacing it with a new sheet for " +
+        description + " will clear the saved match on this device.";
+      byId("launch-choice").hidden = false;
+    }
+
     function setRoster(data) {
       const teams = data?.teams;
       const isName = value => typeof value === "string" && Boolean(value.trim());
@@ -1609,6 +1668,7 @@
       }
       roster = teams;
       rosterByTeam = new Map(teams.map(team => [team.name, team.players]));
+      applyLaunchParameters();
       renderSetup();
       renderGames();
     }
