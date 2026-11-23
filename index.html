@@ -1645,28 +1645,28 @@
     function updateSubmission(data, error = "") {
       const complete = !data.issues.length;
       const hasSubmission = Boolean(sheet.lastSubmittedSummary);
+      const unchanged = complete && hasSubmission && sheet.lastSubmittedSummary === resultsText(data);
       const submit = byId("submit-results");
       const resubmit = byId("resubmit-results");
       submit.hidden = hasSubmission;
       submit.disabled = submitting || !complete || hasSubmission;
       resubmit.hidden = !hasSubmission;
-      resubmit.disabled = submitting || !complete || !hasSubmission;
+      resubmit.disabled = submitting || !complete || !hasSubmission || unchanged;
       const status = byId("submission-status");
-      status.classList.toggle("error", Boolean(error));
+      status.classList.toggle("error", Boolean(error) && complete && !unchanged);
       if (submitting) status.textContent = "Sending results...";
+      else if (!complete) status.textContent = "Complete the items under Needs attention before submitting.";
+      else if (unchanged) status.textContent = "Web3Forms accepted these results. Change the results summary to resubmit.";
       else if (error) status.textContent = error;
-      else if (hasSubmission && complete) {
-        status.textContent = sheet.lastSubmittedSummary === resultsText(data)
-          ? "Web3Forms accepted these results."
-          : "Web3Forms accepted an earlier version. Resubmit to send the updated results.";
-      } else if (complete) status.textContent = "Test submission to the league’s trial inbox.";
-      else status.textContent = "Complete the items under Needs attention before submitting.";
+      else if (hasSubmission) status.textContent = "Web3Forms accepted an earlier version. Resubmit to send the updated results.";
+      else status.textContent = "Test submission to the trial inbox.";
     }
 
     async function sendResults(resubmission) {
       const data = reviewData();
       if (submitting || data.issues.length || Boolean(sheet.lastSubmittedSummary) !== resubmission) return;
       const message = resultsText(data);
+      if (resubmission && message === sheet.lastSubmittedSummary) return;
       const subjectPrefix = resubmission ? "[SCORESHEET] Resubmission | " : "[SCORESHEET] ";
 
       const submittedSheet = sheet;
