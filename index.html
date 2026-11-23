@@ -184,7 +184,7 @@
     .review-table th, .review-table td { padding: 5px; font-size: .85rem; overflow-wrap: anywhere; }
     .review-table th[scope="row"] { text-align: left; font-weight: 550; }
     .review-table tfoot { background: var(--soft); font-weight: 700; }
-    .review-issues h3 { width: fit-content; padding: 3px 7px; border-radius: 3px; background: var(--review-alert); color: white; }
+    .review-issues:has(> ul:not([hidden])) h3 { width: fit-content; padding: 3px 7px; border-radius: 3px; background: var(--review-alert); color: white; }
     .review-issues ul { margin: 0; border-left: 3px solid var(--review-alert); padding: 1px 0 1px 12px; list-style: none; }
     .review-issues li + li { margin-top: 7px; }
     .review-issues button { text-align: left; font-weight: 500; }
