@@ -368,6 +368,7 @@
       <section class="review-submit" aria-label="Send or download results">
         <div class="review-submit-actions">
           <button id="submit-results" class="primary" type="button" disabled aria-describedby="submission-status">Submit results</button>
+          <button id="resubmit-results" class="primary" type="button" hidden disabled aria-describedby="submission-status">Resubmit</button>
           <button id="download-results" type="button">Download text copy</button>
         </div>
         <p id="submission-status" role="status"></p>
@@ -1643,22 +1644,30 @@
     let submitting = false;
     function updateSubmission(data, error = "") {
       const complete = !data.issues.length;
-      const alreadySubmitted = complete && sheet.lastSubmittedSummary === resultsText(data);
-      byId("submit-results").disabled = submitting || !complete || alreadySubmitted;
+      const hasSubmission = Boolean(sheet.lastSubmittedSummary);
+      const submit = byId("submit-results");
+      const resubmit = byId("resubmit-results");
+      submit.hidden = hasSubmission;
+      submit.disabled = submitting || !complete || hasSubmission;
+      resubmit.hidden = !hasSubmission;
+      resubmit.disabled = submitting || !complete || !hasSubmission;
       const status = byId("submission-status");
       status.classList.toggle("error", Boolean(error));
       if (submitting) status.textContent = "Sending results...";
       else if (error) status.textContent = error;
-      else if (alreadySubmitted) status.textContent = "Web3Forms accepted these results.";
-      else if (complete) status.textContent = "Test submission to the league’s trial inbox.";
+      else if (hasSubmission && complete) {
+        status.textContent = sheet.lastSubmittedSummary === resultsText(data)
+          ? "Web3Forms accepted these results."
+          : "Web3Forms accepted an earlier version. Resubmit to send the updated results.";
+      } else if (complete) status.textContent = "Test submission to the league’s trial inbox.";
       else status.textContent = "Complete the items under Needs attention before submitting.";
     }
 
-    byId("submit-results").addEventListener("click", async () => {
+    async function sendResults(resubmission) {
       const data = reviewData();
-      if (submitting || data.issues.length) return;
+      if (submitting || data.issues.length || Boolean(sheet.lastSubmittedSummary) !== resubmission) return;
       const message = resultsText(data);
-      if (sheet.lastSubmittedSummary === message) return;
+      const subjectPrefix = resubmission ? "[SCORESHEET] Resubmission | " : "[SCORESHEET] ";
 
       const submittedSheet = sheet;
       submitting = true;
@@ -1672,7 +1681,7 @@
           body: JSON.stringify({
             access_key: web3FormsAccessKey,
             from_name: "GMDL Scoresheet",
-            subject: "[SCORESHEET] " + sheet.date + " | " + sheet.team + " vs. " + sheet.opponent,
+            subject: subjectPrefix + sheet.date + " | " + sheet.team + " vs. " + sheet.opponent,
             message
           })
         });
@@ -1687,7 +1696,10 @@
         submitting = false;
         updateSubmission(reviewData(), sheet === submittedSheet ? error : "");
       }
-    });
+    }
+
+    byId("submit-results").addEventListener("click", () => sendResults(false));
+    byId("resubmit-results").addEventListener("click", () => sendResults(true));
 
     byId("download-results").addEventListener("click", () => {
       const text = resultsText(reviewData());
