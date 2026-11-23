@@ -189,6 +189,8 @@
     .review-issues li + li { margin-top: 7px; }
     .review-issues button { text-align: left; font-weight: 500; }
     .review-submit { border-top: 1px solid var(--line); margin-top: 20px; padding-top: 12px; }
+    .review-submit-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+    #submission-status.error { color: var(--error); }
     .review-list { margin: 0; padding: 0; list-style: none; font-size: .9rem; overflow-wrap: anywhere; }
     .review-list li + li { margin-top: 7px; }
     .review-high { background: var(--highlighter); color: var(--highlight-ink); }
@@ -363,10 +365,13 @@
           </div>
         </div>
       </section>
-      <div class="review-submit">
-        <button type="button" disabled aria-describedby="submission-status">Submit results</button>
-        <p id="submission-status">Online submission is awaiting the league website setup. Your scores are saved on this device.</p>
-      </div>
+      <section class="review-submit" aria-label="Send or download results">
+        <div class="review-submit-actions">
+          <button id="submit-results" class="primary" type="button" disabled aria-describedby="submission-status">Submit results</button>
+          <button id="download-results" type="button">Download text copy</button>
+        </div>
+        <p id="submission-status" role="status"></p>
+      </section>
     </section>
   </main>
   <dialog id="checkout-dialog" class="checkout-dialog" aria-labelledby="checkout-heading">
@@ -404,6 +409,8 @@
     const byId = id => document.getElementById(id);
     const storageKey = "gmdl-prototype-1001-v1";
     const rosterUrl = "./league-roster.json";
+    const submissionUrl = "https://api.web3forms.com/submit";
+    const web3FormsAccessKey = "2347fdc7-1971-43ce-b6f2-9b11bdde09c0";
     const playerCount = 4;
     const initialColumns = 8;
     const cutoff = 130;
@@ -1433,6 +1440,9 @@
       const highs = [];
       const finishes = [];
       const addIssue = (text, target) => issues.push({ text, target });
+      for (const input of byId("scoring-page").querySelectorAll('[aria-invalid="true"]')) {
+        addIssue("Correct " + (input.getAttribute("aria-label") ?? "the highlighted field") + ".", { input });
+      }
       for (const [field, label, id] of [
         ["date", "match date", "match-date"], ["team", "team", "team"],
         ["opponent", "opponent", "opponent"], ["msp", "Most Sportsmanlike Player", "msp"]
@@ -1531,19 +1541,49 @@
       return button;
     }
 
+    const matchDetails = () => [
+      ["Date", sheet.date], ["Team", sheet.team], ["Opponent", sheet.opponent], ["MSP", sheet.msp]
+    ];
+
+    function resultCounts(data, type) {
+      const games = type ? data.games.filter(game => game.type === type) : data.games;
+      const wins = games.filter(game => game.result?.type === "win").length;
+      const losses = games.filter(game => game.result?.type === "loss").length;
+      return [wins, losses, games.length - wins - losses];
+    }
+
+    const highScoreAttribution = entry => displayName(entry.player) + " (" + entry.label + ")";
+    const finishSummary = entry => displayName(entry.player) + " - " + entry.checkout.replace("x", " x ") +
+      (isLarry(entry.result) ? " - Larry" : "") + " (" + entry.label + ")";
+
+    function resultsText(data) {
+      const results = ["501", "1001", ""].map(type => {
+        const [wins, losses, unrecorded] = resultCounts(data, type);
+        return (type || "Overall") + ": " + wins + (wins === 1 ? " win, " : " wins, ") +
+          losses + (losses === 1 ? " loss" : " losses") +
+          (unrecorded ? ", " + unrecorded + " unrecorded" : "");
+      });
+      const averages = [...data.totals.map(([name, totals]) => [displayName(name), totals]), ["Team", data.teamTotal]]
+        .map(([name, totals]) => name + " - Shots: " + totals.shots + ", Points: " + totals.points +
+          ", Avg: " + average(totals));
+      const highs = data.highs.flatMap(entry => entry.scores.map(score => score + " - " + highScoreAttribution(entry)));
+      const group = (heading, lines) => [heading, ...(lines.length ? lines : ["None"])].join("\n");
+      return [
+        data.issues.length ? "INCOMPLETE - Nightly Scoresheet" : "Nightly Scoresheet",
+        matchDetails().map(([label, value]) => label + ": " + (value || "-")).join("\n"),
+        group("Results", results),
+        group("1001 averages", averages),
+        group("High scores", highs),
+        group("Finishes", data.finishes.map(finishSummary)),
+        group("Spares", data.spares),
+        group("New players", data.newPlayers.map(player => player.name +
+          (player.addToRoster ? " (add to team roster requested)" : " (no roster change requested)")))
+      ].join("\n\n") + "\n";
+    }
+
     function renderReview() {
       const data = reviewData();
-      for (const input of byId("scoring-page").querySelectorAll('[aria-invalid="true"]')) {
-        data.issues.push({
-          text: "Correct " + (input.getAttribute("aria-label") ?? "the highlighted field") + ".",
-          target: { input }
-        });
-      }
-      const fields = [
-        ["Date", sheet.date], ["Team", sheet.team], ["Opponent", sheet.opponent],
-        ["MSP", sheet.msp]
-      ];
-      byId("review-meta").replaceChildren(...fields.map(([label, value]) => {
+      byId("review-meta").replaceChildren(...matchDetails().map(([label, value]) => {
         const group = element("div");
         group.append(element("dt", label), element("dd", value || "—"));
         return group;
@@ -1555,12 +1595,6 @@
         line.append(editLink(issue.text, issue.target));
         return line;
       }));
-      const counts = type => {
-        const games = type ? data.games.filter(game => game.type === type) : data.games;
-        const wins = games.filter(game => game.result?.type === "win").length;
-        const losses = games.filter(game => game.result?.type === "loss").length;
-        return [wins, losses, games.length - wins - losses];
-      };
       const resultRow = (label, values) => {
         const row = element("tr");
         const heading = element("th", label);
@@ -1568,8 +1602,8 @@
         row.append(heading, ...values.map(value => element("td", value)));
         return row;
       };
-      byId("review-results").replaceChildren(...["501", "1001"].map(type => resultRow(type, counts(type))));
-      byId("review-overall").replaceChildren(resultRow("Overall", counts()));
+      byId("review-results").replaceChildren(...["501", "1001"].map(type => resultRow(type, resultCounts(data, type))));
+      byId("review-overall").replaceChildren(resultRow("Overall", resultCounts(data)));
       byId("review-averages").replaceChildren(...data.totals.map(([name, totals]) =>
         resultRow(displayName(name), [totals.shots, totals.points, average(totals)])));
       byId("review-team-average").replaceChildren(resultRow("Team",
@@ -1577,13 +1611,11 @@
       byId("review-highs").replaceChildren(...(data.highs.length ? data.highs.flatMap(entry =>
         entry.scores.map(score => {
           const row = element("li");
-          row.append(element("mark", score, "review-high"),
-            " - " + displayName(entry.player) + " (" + entry.label + ")");
+          row.append(element("mark", score, "review-high"), " - " + highScoreAttribution(entry));
           return row;
         })) : [element("li", "No high scores recorded.")]));
       byId("review-finishes").replaceChildren(...(data.finishes.length ? data.finishes.map(entry =>
-        element("li", displayName(entry.player) + " - " + entry.checkout.replace("x", " x ") +
-          (isLarry(entry.result) ? " — Larry" : "") + " (" + entry.label + ")"))
+        element("li", finishSummary(entry)))
         : [element("li", "No finishes recorded.")]));
       byId("review-spares").replaceChildren(...(data.spares.length
         ? data.spares.map(name => element("li", name)) : [element("li", "None")]));
@@ -1598,15 +1630,78 @@
           if (choice.checked) sheet.rosterOptOuts = sheet.rosterOptOuts.filter(name => name !== key);
           else sheet.rosterOptOuts.push(key);
           save();
+          updateSubmission(reviewData());
         });
         const label = element("label", null, "review-roster-choice");
         label.append(choice, "Add to team roster");
         line.append(label);
         return line;
       }) : [element("li", "None")]));
-      byId("submission-status").textContent = "Online submission is awaiting the league website setup. " +
-        (storageProblem ? "Local saving is unavailable on this browser." : "Your scores are saved on this device.");
+      updateSubmission(data);
     }
+
+    let submitting = false;
+    function updateSubmission(data, error = "") {
+      const complete = !data.issues.length;
+      const alreadySubmitted = complete && sheet.lastSubmittedSummary === resultsText(data);
+      byId("submit-results").disabled = submitting || !complete || alreadySubmitted;
+      const status = byId("submission-status");
+      status.classList.toggle("error", Boolean(error));
+      if (submitting) status.textContent = "Sending results...";
+      else if (error) status.textContent = error;
+      else if (alreadySubmitted) status.textContent = "Web3Forms accepted these results.";
+      else if (complete) status.textContent = "Test submission to the league’s trial inbox.";
+      else status.textContent = "Complete the items under Needs attention before submitting.";
+    }
+
+    byId("submit-results").addEventListener("click", async () => {
+      const data = reviewData();
+      if (submitting || data.issues.length) return;
+      const message = resultsText(data);
+      if (sheet.lastSubmittedSummary === message) return;
+
+      const submittedSheet = sheet;
+      submitting = true;
+      updateSubmission(data);
+      let error = "";
+      try {
+        const response = await fetch(submissionUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          signal: AbortSignal.timeout(15000),
+          body: JSON.stringify({
+            access_key: web3FormsAccessKey,
+            from_name: "Browser Darts Sheet",
+            subject: "[TEST] Darts results | " + sheet.date + " | " + sheet.team + " vs. " + sheet.opponent,
+            message
+          })
+        });
+        if (!response.ok || (await response.json()).success !== true) throw new Error("Submission not accepted");
+        if (sheet === submittedSheet) {
+          sheet.lastSubmittedSummary = message;
+          save();
+        }
+      } catch {
+        error = "Couldn’t confirm submission. Your results are still on this sheet. You can retry or download a text copy.";
+      } finally {
+        submitting = false;
+        updateSubmission(reviewData(), sheet === submittedSheet ? error : "");
+      }
+    });
+
+    byId("download-results").addEventListener("click", () => {
+      const text = resultsText(reviewData());
+      const team = (sheet.team || "scoresheet").toLowerCase().replace(/['’]/g, "")
+        .replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+      const url = URL.createObjectURL(new Blob([text], { type: "text/plain;charset=utf-8" }));
+      const link = element("a");
+      link.href = url;
+      link.download = (sheet.date || "undated") + "-" + (team || "scoresheet") + "-results.txt";
+      document.body.append(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    });
 
     byId("open-review").addEventListener("click", () => {
       // Include the final match-detail edit when moving into review.
